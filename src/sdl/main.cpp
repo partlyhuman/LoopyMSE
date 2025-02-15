@@ -24,6 +24,8 @@ struct Screen
 	SDL_Texture* texture;
 };
 
+const int INTSCALE = 4;
+
 static Screen screen;
 
 void initialize()
@@ -39,11 +41,11 @@ void initialize()
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
     //Set up SDL screen
-    SDL_CreateWindowAndRenderer(2 * DISPLAY_WIDTH, 2 * DISPLAY_HEIGHT, 0, &screen.window, &screen.renderer);
-    SDL_SetWindowTitle(screen.window, "Rupi");
-    SDL_SetWindowSize(screen.window, 2 * DISPLAY_WIDTH, 2 * DISPLAY_HEIGHT);
-    SDL_SetWindowResizable(screen.window, SDL_FALSE);
-    SDL_RenderSetLogicalSize(screen.renderer, 2 * DISPLAY_WIDTH, 2 * DISPLAY_HEIGHT);
+    SDL_CreateWindowAndRenderer(INTSCALE * DISPLAY_WIDTH, INTSCALE * DISPLAY_HEIGHT, 0, &screen.window, &screen.renderer);
+    SDL_SetWindowTitle(screen.window, "Loopy My Seal Emulator");
+    SDL_SetWindowSize(screen.window, INTSCALE * DISPLAY_WIDTH, INTSCALE * DISPLAY_HEIGHT);
+    SDL_SetWindowResizable(screen.window, SDL_TRUE);
+    SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 
     screen.texture = SDL_CreateTexture(screen.renderer, SDL_PIXELFORMAT_ARGB1555, SDL_TEXTUREACCESS_STREAMING, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 }
@@ -174,9 +176,13 @@ int main(int argc, char** argv)
     Input::add_key_binding(SDLK_DOWN, Input::PAD_DOWN);
     
     bool has_quit = false;
+    bool is_paused = false;
     while (!has_quit)
     {
-        System::run();
+        if (!is_paused)
+        {
+            System::run();
+        }
         SDL::update(System::get_display_output());
 
         SDL_Event e;
@@ -205,6 +211,12 @@ int main(int argc, char** argv)
                 case SDL_WINDOWEVENT_MAXIMIZED:
                 case SDL_WINDOWEVENT_RESTORED:
                     Sound::set_mute(false);
+                    break;
+                case SDL_WINDOWEVENT_FOCUS_GAINED:
+                    is_paused = false;
+                    break;
+                case SDL_WINDOWEVENT_FOCUS_LOST:
+                    is_paused = true;
                     break;
                 }
             }
