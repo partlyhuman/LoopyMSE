@@ -1,0 +1,10 @@
+BasedOnStyle: Google
+ColumnLimit: 120
+UseTab: Always
+IndentWidth: 4
+TabWidth: 4
+BreakBeforeBraces: Allman
+PointerAlignment: Left
+IndentCaseLabels: false
+ReflowComments: false
+AllowShortFunctionsOnASingleLine: None
