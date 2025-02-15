@@ -154,7 +154,7 @@ static void vsync_start()
 		SH2::OCPM::INTC::deassert_irq(irq_id);
 	}
 
-	dump_bmp("output_display", vdp.display_output);
+	//dump_bmp("output_display", vdp.display_output);
 	//dump_all_bmps();
 	//dump_for_serial();
 }
@@ -278,6 +278,12 @@ bool check_frame_end()
 uint16_t* get_display_output()
 {
 	return vdp.display_output.get();
+}
+
+void dump_current_frame()
+{
+	// Do we need to wait for vsync? This happens on input processing loop
+	dump_bmp("output_display", vdp.display_output);
 }
 
 void dump_for_serial()

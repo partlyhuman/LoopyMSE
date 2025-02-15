@@ -92,13 +92,6 @@ int main(int argc, char** argv)
 {
 	auto print_usage = [&]() { printf("Usage: %s <game ROM> <BIOS> [sound BIOS]\n", argv[0]); };
 
-	if (argc < 3)
-	{
-		//Sound ROM currently optional
-		print_usage();
-		return 1;
-	}
-
 	SDL::initialize();
 	Config::SystemInfo config = {};
 	SDL_LogSetAllPriority(SDL_LOG_PRIORITY_ERROR);
@@ -252,8 +245,25 @@ int main(int argc, char** argv)
 				Input::set_key_state(e.key.keysym.sym, true);
 				break;
 			case SDL_KEYUP:
-				Input::set_key_state(e.key.keysym.sym, false);
+			{
+				SDL_Keycode keycode = e.key.keysym.sym;
+				switch (keycode)
+				{
+				case SDLK_F10:
+					printf("Dumping frame...\n");
+					Video::dump_current_frame();
+					break;
+				case SDLK_F12:
+					printf("Rebooting Loopy...\n");
+					System::shutdown();
+					System::initialize(config);
+					break;
+				default:
+					Input::set_key_state(keycode, false);
+					break;
+				}
 				break;
+			}
 			case SDL_WINDOWEVENT:
 				switch (e.window.event)
 				{
