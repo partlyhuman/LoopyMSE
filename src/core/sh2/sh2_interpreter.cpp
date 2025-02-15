@@ -1,7 +1,11 @@
+#include "core/sh2/sh2_interpreter.h"
+
+#include <log/log.h>
+
 #include <cassert>
 #include <cstdio>
+
 #include "core/sh2/sh2_bus.h"
-#include "core/sh2/sh2_interpreter.h"
 #include "core/sh2/sh2_local.h"
 
 namespace SH2::Interpreter
@@ -12,25 +16,31 @@ namespace SH2::Interpreter
 #define GET_Q() ((sh2.sr >> 8) & 0x1)
 #define GET_M() ((sh2.sr >> 9) & 0x1)
 
-#define SET_T(x) do {			\
-	sh2.sr &= ~0x1;				\
-	sh2.sr |= (x) & 0x1;		\
-} while (0);
+#define SET_T(x)             \
+	do                       \
+	{                        \
+		sh2.sr &= ~0x1;      \
+		sh2.sr |= (x) & 0x1; \
+	} while (0);
 
-#define SET_Q(x) do {			\
-	sh2.sr &= ~0x100;			\
-	sh2.sr |= ((x) & 0x1) << 8; \
-} while (0);
+#define SET_Q(x)                    \
+	do                              \
+	{                               \
+		sh2.sr &= ~0x100;           \
+		sh2.sr |= ((x) & 0x1) << 8; \
+	} while (0);
 
-#define SET_M(x) do {			\
-	sh2.sr &= ~0x200;			\
-	sh2.sr |= ((x) & 0x1) << 9; \
-} while (0);
+#define SET_M(x)                    \
+	do                              \
+	{                               \
+		sh2.sr &= ~0x200;           \
+		sh2.sr |= ((x) & 0x1) << 9; \
+	} while (0);
 
 static void handle_jump(uint32_t dst, bool delay_slot)
 {
 	//TODO: raise an exception if this function is called within a delay slot
-	
+
 	//Small hack: if in a delay slot, immediately execute the next instruction
 	if (delay_slot)
 	{
@@ -39,7 +49,7 @@ static void handle_jump(uint32_t dst, bool delay_slot)
 		uint16_t instr = Bus::read16(sh2.pc - 4);
 		run(instr);
 	}
-	
+
 	sh2.pc = dst + 2;
 }
 
@@ -481,7 +491,7 @@ static void addv(uint16_t instr)
 	uint32_t b = sh2.gpr[dst];
 	uint32_t result = a + b;
 	sh2.gpr[dst] = result;
-	
+
 	//If a and b have the same sign, and a and the sum have different signs, overflow has occurred
 	bool overflow = (!((a ^ b) & 0x80000000)) && ((a ^ result) & 0x80000000);
 	SET_T(overflow);
@@ -582,7 +592,7 @@ static void div1(uint16_t instr)
 {
 	uint32_t denom = (instr >> 4) & 0xF;
 	uint32_t num = (instr >> 8) & 0xF;
-	
+
 	bool t = GET_T();
 	bool old_q = GET_Q();
 	bool m = GET_M();
@@ -610,7 +620,7 @@ static void div1(uint16_t instr)
 	{
 		new_q = !new_q;
 	}
-	
+
 	SET_Q(new_q);
 	SET_T(new_q == m);
 }
@@ -622,7 +632,7 @@ static void div0s(uint16_t instr)
 
 	bool new_m = sh2.gpr[reg1] >> 31;
 	bool new_q = sh2.gpr[reg2] >> 31;
-	
+
 	SET_T(new_m ^ new_q);
 	SET_Q(new_q);
 	SET_M(new_m);
@@ -1592,9 +1602,9 @@ void run(uint16_t instr)
 	}
 	else
 	{
-		printf("[SH2] unrecognized instr %04X at %08X\n", instr, sh2.pc - 4);
+		Log::error("[SH2] unrecognized instr %04X at %08X\n", instr, sh2.pc - 4);
 		assert(0);
 	}
 }
 
-}
+}  // namespace SH2::Interpreter

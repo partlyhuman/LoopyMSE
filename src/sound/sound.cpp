@@ -15,18 +15,18 @@ Game support notes:
 - Wanwan has no PCM sample support, and seems to crackle on dialog sfx (same timing issue?)
 */
 
+#include <SDL.h>
+#include <core/timing.h>
+#include <log/log.h>
+#include <sound/loopysound.h>
+#include <sound/sound.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <cstring>
 #include <memory>
 #include <vector>
-
-#include <SDL.h>
-
-#include <core/timing.h>
-#include <sound/sound.h>
-#include <sound/loopysound.h>
 
 namespace Sound
 {
@@ -40,7 +40,7 @@ static int sample_rate;
 static int buffer_size;
 
 static bool mute = false;
-static float volume_level; // Automatically managed by mute
+static float volume_level;	// Automatically managed by mute
 
 static void buffer_callback(float* buffer, uint32_t count);
 
@@ -58,9 +58,9 @@ static void sdl_audio_callback(void* userdata, uint8_t* raw_buffer, int len)
 static bool sdl_audio_initialize()
 {
 	// Initialize SDL audio subsystem if available
-	if(SDL_InitSubSystem(SDL_INIT_AUDIO) < 0)
+	if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0)
 	{
-		printf("[Sound] SDL audio unavailable: %s\n", SDL_GetError());
+		Log::error("[Sound] SDL audio unavailable: %s\n", SDL_GetError());
 		return false;
 	}
 
@@ -78,9 +78,9 @@ static bool sdl_audio_initialize()
 	// Try to open a device using this format
 	SDL_AudioSpec format_obtained;
 	audio_device = SDL_OpenAudioDevice(NULL, 0, &format_desired, &format_obtained, 0);
-	if(!audio_device)
+	if (!audio_device)
 	{
-		printf("[Sound] No audio device available\n");
+		Log::error("[Sound] No audio device available\n");
 		return false;
 	}
 
@@ -90,14 +90,14 @@ static bool sdl_audio_initialize()
 
 	// Finally enable output
 	SDL_PauseAudioDevice(audio_device, 0);
-	printf("[Sound] Using audio device %s\n", SDL_GetAudioDeviceName(audio_device, 0));
+	Log::info("[Sound] Using audio device %s\n", SDL_GetAudioDeviceName(audio_device, 0));
 	return true;
 }
 
 static void sdl_audio_shutdown()
 {
 	// Close audio device
-	if(audio_device) SDL_CloseAudioDevice(audio_device);
+	if (audio_device) SDL_CloseAudioDevice(audio_device);
 }
 
 /* SDL-specific code end */
@@ -106,18 +106,18 @@ static void timeref(uint64_t param, int cycles_late);
 
 void initialize(std::vector<uint8_t>& sound_rom)
 {
-	if(!sound_rom.empty())
+	if (!sound_rom.empty())
 	{
-		if(!sdl_audio_initialize())
+		if (!sdl_audio_initialize())
 		{
 			return;
 		}
 
 		sound_engine = std::make_unique<LoopySound::LoopySound>(sound_rom, (float)sample_rate, buffer_size);
 
-		if(TIMEREF_ENABLE)
+		if (TIMEREF_ENABLE)
 		{
-			printf("[Sound] Schedule timeref %d Hz\n", TIMEREF_FREQUENCY);
+			Log::info("[Sound] Schedule timeref %d Hz\n", TIMEREF_FREQUENCY);
 			timeref_func = Timing::register_func("Sound::timeref", timeref);
 			timeref(0, 0);
 		}
@@ -156,9 +156,9 @@ void ctrl_write8(uint32_t addr, uint8_t value)
 void ctrl_write16(uint32_t addr, uint16_t value)
 {
 	value &= 0xFFF;
-	//printf("[Sound] Control register %03X\n", value);
+	//Log::debug("[Sound] Control register %03X\n", value);
 	//fflush(stdout);
-	if(sound_engine)
+	if (sound_engine)
 	{
 		sound_engine->set_control_register(value);
 	}
@@ -171,9 +171,9 @@ void ctrl_write32(uint32_t addr, uint32_t value)
 
 void midi_byte_in(uint8_t value)
 {
-	//printf("[Sound] MIDI byte %02X\n", value);
+	//Log::debug("[Sound] MIDI byte %02X\n", value);
 	//fflush(stdout);
-	if(sound_engine)
+	if (sound_engine)
 	{
 		sound_engine->midi_in((char)value);
 	}
@@ -182,7 +182,7 @@ void midi_byte_in(uint8_t value)
 void set_mute(bool mute_in)
 {
 	mute = mute_in;
-	printf("[Sound] %s output\n", mute_in ? "Muted" : "Unmuted");
+	Log::info("[Sound] %s output\n", mute_in ? "Muted" : "Unmuted");
 }
 
 static void timeref(uint64_t param, int cycles_late)
@@ -197,10 +197,10 @@ static void timeref(uint64_t param, int cycles_late)
 
 static void update_volume_level()
 {
-	if(MUTE_FADE_MS > 0)
+	if (MUTE_FADE_MS > 0)
 	{
 		float delta = 1000.f / (sample_rate * MUTE_FADE_MS);
-		if(mute) delta = -delta;
+		if (mute) delta = -delta;
 		volume_level += delta;
 		volume_level = std::clamp(volume_level, 0.f, 1.f);
 	}
@@ -212,12 +212,12 @@ static void update_volume_level()
 
 static void buffer_callback(float* sample_buffer, uint32_t sample_count)
 {
-	if(sound_engine)
+	if (sound_engine)
 	{
 		// Generate samples if we can, updating the mute level every sample
 		float tmp[2];
 		int p = 0;
-		for(uint32_t i = 0; i < sample_count/2; i++)
+		for (uint32_t i = 0; i < sample_count / 2; i++)
 		{
 			update_volume_level();
 			sound_engine->gen_sample(tmp);
@@ -228,11 +228,11 @@ static void buffer_callback(float* sample_buffer, uint32_t sample_count)
 	else
 	{
 		// If for some reason we can't generate samples, zero the buffer
-		for(uint32_t i = 0; i < sample_count; i++)
+		for (uint32_t i = 0; i < sample_count; i++)
 		{
 			sample_buffer[i] = 0.f;
 		}
 	}
 }
 
-}
+}  // namespace Sound

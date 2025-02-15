@@ -1,6 +1,8 @@
+#include <core/loopy_io.h>
+#include <log/log.h>
+
 #include <cassert>
 #include <cstdio>
-#include "core/loopy_io.h"
 
 namespace LoopyIO
 {
@@ -40,7 +42,7 @@ uint16_t reg_read16(uint32_t addr)
 	case 0x014:
 		return 0;
 	default:
-		printf("[IO] unmapped read16 %08X\n", addr);
+		Log::warn("[IO] unmapped read16 %08X\n", addr);
 		return 0;
 	}
 }
@@ -62,7 +64,7 @@ void reg_write16(uint32_t addr, uint16_t value)
 	switch (addr)
 	{
 	default:
-		printf("[IO] unmapped write16 %08X: %04X\n", addr, value);
+		Log::warn("[IO] unmapped write16 %08X: %04X\n", addr, value);
 	}
 }
 
@@ -83,4 +85,4 @@ void update_pad(int key_info, bool pressed)
 	}
 }
 
-}
+}  // namespace LoopyIO

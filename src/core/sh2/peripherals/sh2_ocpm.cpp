@@ -1,9 +1,13 @@
+#include "core/sh2/peripherals/sh2_ocpm.h"
+
+#include <common/bswp.h>
+#include <log/log.h>
+
 #include <cstdio>
 #include <cstring>
-#include <common/bswp.h>
+
 #include "core/sh2/peripherals/sh2_dmac.h"
 #include "core/sh2/peripherals/sh2_intc.h"
-#include "core/sh2/peripherals/sh2_ocpm.h"
 #include "core/sh2/peripherals/sh2_serial.h"
 #include "core/sh2/peripherals/sh2_timers.h"
 
@@ -46,7 +50,7 @@ uint8_t io_read8(uint32_t addr)
 	switch (addr)
 	{
 	default:
-		printf("[OCPM] read8 %08X\n", addr);
+		Log::debug("[OCPM] read8 %08X\n", addr);
 		return 0;
 	}
 }
@@ -73,7 +77,7 @@ uint16_t io_read16(uint32_t addr)
 	switch (addr)
 	{
 	default:
-		printf("[OCPM] read16 %08X\n", addr);
+		Log::debug("[OCPM] read16 %08X\n", addr);
 		return 0;
 	}
 }
@@ -84,7 +88,7 @@ uint32_t io_read32(uint32_t addr)
 	switch (addr)
 	{
 	default:
-		printf("[OCPM] read32 %08X\n", addr);
+		Log::debug("[OCPM] read32 %08X\n", addr);
 		return 0;
 	}
 }
@@ -114,7 +118,7 @@ void io_write8(uint32_t addr, uint8_t value)
 	switch (addr)
 	{
 	default:
-		printf("[OCPM] write8 %08X: %02X\n", addr, value);
+		Log::debug("[OCPM] write8 %08X: %02X\n", addr, value);
 	}
 }
 
@@ -142,7 +146,7 @@ void io_write16(uint32_t addr, uint16_t value)
 	switch (addr)
 	{
 	default:
-		printf("[OCPM] write16 %08X: %04X\n", addr, value);
+		Log::debug("[OCPM] write16 %08X: %04X\n", addr, value);
 	}
 }
 
@@ -157,7 +161,7 @@ void io_write32(uint32_t addr, uint32_t value)
 	switch (addr)
 	{
 	default:
-		printf("[OCPM] write32 %08X: %08X\n", addr, value);
+		Log::debug("[OCPM] write32 %08X: %08X\n", addr, value);
 	}
 }
 
@@ -197,4 +201,4 @@ void oram_write32(uint32_t addr, uint32_t value)
 	memcpy(&oram[addr & 0x3FF], &value, 4);
 }
 
-}
+}  // namespace SH2::OCPM

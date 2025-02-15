@@ -1,10 +1,13 @@
+#include "core/sh2/peripherals/sh2_serial.h"
+
+#include <log/log.h>
+#include <sound/sound.h>
+
 #include <cassert>
 #include <cstdio>
 #include <functional>
 
-#include <sound/sound.h>
 #include "core/sh2/peripherals/sh2_dmac.h"
-#include "core/sh2/peripherals/sh2_serial.h"
 #include "core/timing.h"
 
 namespace SH2::OCPM::Serial
@@ -115,9 +118,10 @@ static void tx_event(uint64_t param, int cycles_late)
 
 	if (!port->tx_bits_left)
 	{
-		printf("[Serial] port%d tx %02X\n", port->id, port->tx_prepared_data);
+		Log::info("[Serial] port%d tx %02X\n", port->id, port->tx_prepared_data);
 
-		if (port->tx_callback != nullptr) {
+		if (port->tx_callback != nullptr)
+		{
 			port->tx_callback(port->tx_prepared_data);
 		}
 
@@ -129,7 +133,7 @@ static void tx_event(uint64_t param, int cycles_late)
 		else
 		{
 			//TODO: can this trigger an interrupt?
-			printf("[Serial] port%d finished tx\n", port->id);
+			Log::info("[Serial] port%d finished tx\n", port->id);
 		}
 	}
 	else
@@ -163,7 +167,7 @@ uint8_t read8(uint32_t addr)
 	Port* port = &state.ports[addr >> 3];
 	int reg = addr & 0x7;
 
-	printf("[Serial] read port%d reg%d\n", port->id, reg);
+	Log::info("[Serial] read port%d reg%d\n", port->id, reg);
 	return 0;
 }
 
@@ -176,7 +180,7 @@ void write8(uint32_t addr, uint8_t value)
 	switch (reg)
 	{
 	case 0x00:
-		printf("[Serial] write port%d mode: %02X\n", port->id, value);
+		Log::info("[Serial] write port%d mode: %02X\n", port->id, value);
 		port->mode.clock_factor = value & 0x3;
 		port->mode.mp_enable = (value >> 2) & 0x1;
 		port->mode.stop_bit_length = (value >> 3) & 0x1;
@@ -187,13 +191,13 @@ void write8(uint32_t addr, uint8_t value)
 		assert(!(value & ~0x3));
 		break;
 	case 0x01:
-		printf("[Serial] write port%d bitrate factor: %02X\n", port->id, value);
+		Log::info("[Serial] write port%d bitrate factor: %02X\n", port->id, value);
 		port->bit_factor = value;
 		port->calc_cycles_per_bit();
-		printf("[Serial] set port%d baudrate: %d bit/s\n", port->id, Timing::F_CPU / port->cycles_per_bit);
+		Log::info("[Serial] set port%d baudrate: %d bit/s\n", port->id, Timing::F_CPU / port->cycles_per_bit);
 		break;
 	case 0x02:
-		printf("[Serial] write port%d ctrl: %02X\n", port->id, value);
+		Log::info("[Serial] write port%d ctrl: %02X\n", port->id, value);
 		port->ctrl.clock_mode = value & 0x3;
 		port->ctrl.tx_end_intr_enable = (value >> 2) & 0x1;
 		port->ctrl.mp_intr_enable = (value >> 3) & 0x1;
@@ -227,7 +231,7 @@ void write8(uint32_t addr, uint8_t value)
 		break;
 	case 0x04:
 		//TODO
-		printf("[Serial write port%d status: %02X\n", port->id, value);
+		Log::info("[Serial write port%d status: %02X\n", port->id, value);
 		break;
 	default:
 		assert(0);
@@ -240,4 +244,4 @@ void set_tx_callback(int port, std::function<void(uint8_t)> callback)
 	state.ports[port].tx_callback = callback;
 }
 
-}
+}  // namespace SH2::OCPM::Serial

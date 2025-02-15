@@ -4,4 +4,4 @@ add_library (sound STATIC
 			 "loopysound.cpp"
 			 "loopysound.h")
 
-target_link_libraries (sound PRIVATE SDL2-static)
+target_link_libraries (sound PRIVATE log SDL2-static)

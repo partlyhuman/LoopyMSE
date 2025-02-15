@@ -1,15 +1,17 @@
-#include <limits>
+#include <common/bswp.h>
+#include <core/memory.h>
+#include <core/sh2/peripherals/sh2_intc.h>
+#include <core/timing.h>
+#include <log/log.h>
+
 #include <cassert>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
-#include <common/bswp.h>
-#include <core/sh2/peripherals/sh2_intc.h>
-#include <core/memory.h>
-#include <core/timing.h>
+#include <limits>
+
 #include "video/render.h"
 #include "video/vdp_local.h"
-#include "video/video.h"
 
 namespace Video
 {
@@ -107,7 +109,7 @@ static void start_hsync(uint64_t param, int cycles_late)
 	//For now hcmp is not emulated but we just assume it happens at the same time as HSYNC
 	if (vdp.cmp_irq_ctrl.irq0_enable && vdp.cmp_irq_ctrl.irq0_enable2)
 	{
-		if(!vdp.cmp_irq_ctrl.use_vcmp || vdp.vcount == vdp.irq0_vcmp)
+		if (!vdp.cmp_irq_ctrl.use_vcmp || vdp.vcount == vdp.irq0_vcmp)
 		{
 			auto irq_id = SH2::OCPM::INTC::IRQ::IRQ0;
 			SH2::OCPM::INTC::assert_irq(irq_id, 0);
@@ -117,7 +119,7 @@ static void start_hsync(uint64_t param, int cycles_late)
 	//IRQ1 is triggered on visible lines when in HSYNC mode
 	if (vdp.sync_irq_ctrl.irq1_enable && vdp.sync_irq_ctrl.irq1_source == 1)
 	{
-		if(vdp.vcount < vdp.visible_scanlines)
+		if (vdp.vcount < vdp.visible_scanlines)
 		{
 			auto irq_id = SH2::OCPM::INTC::IRQ::IRQ1;
 			SH2::OCPM::INTC::assert_irq(irq_id, 0);
@@ -128,7 +130,7 @@ static void start_hsync(uint64_t param, int cycles_late)
 
 static void vsync_start()
 {
-	printf("[Video] VSYNC start\n");
+	Log::debug("[Video] VSYNC start");
 
 	//This is kinda weird, but when the VDP enters VSYNC, the total number of scanlines is subtracted from VCOUNT
 	//Think of the VSYNC lines as being negative
@@ -167,7 +169,7 @@ static void inc_vcount(uint64_t param, int cycles_late)
 	}
 
 	vdp.vcount++;
-	
+
 	//Once we go past the visible region, enter VSYNC
 	if (vdp.vcount == vdp.visible_scanlines)
 	{
@@ -178,7 +180,7 @@ static void inc_vcount(uint64_t param, int cycles_late)
 	constexpr static int VSYNC_END = 0x200;
 	if (vdp.vcount == VSYNC_END)
 	{
-		printf("[Video] VSYNC end\n");
+		Log::debug("[Video] VSYNC end");
 		vdp.vcount = 0;
 	}
 
@@ -196,7 +198,7 @@ static void inc_vcount(uint64_t param, int cycles_late)
 static void dump_serial_region(std::ofstream& dump, uint8_t* mem, uint32_t addr, uint32_t length)
 {
 	DumpHeader header;
-	header.addr = Common::bswp32(addr | (1 << 27)); //Make sure the address is 16-bit for the CPU
+	header.addr = Common::bswp32(addr | (1 << 27));	 //Make sure the address is 16-bit for the CPU
 	header.length = Common::bswp32(length);
 	header.data_width = Common::bswp32(2);
 
@@ -410,7 +412,7 @@ uint8_t bitmap_reg_read8(uint32_t addr)
 uint16_t bitmap_reg_read16(uint32_t addr)
 {
 	addr &= 0xFFF;
-	
+
 	int index = (addr >> 1) & 0x3;
 	auto layer = &vdp.bitmap_regs[index];
 	int reg = addr & ~0x7;
@@ -463,40 +465,40 @@ void bitmap_reg_write16(uint32_t addr, uint16_t value)
 	switch (reg)
 	{
 	case 0x000:
-		printf("[Video] write BM%d_SCROLLX: %04X\n", index, value);
+		Log::debug("[Video] write BM%d_SCROLLX: %04X\n", index, value);
 		layer->scrollx = value & 0x1FF;
 		break;
 	case 0x008:
-		printf("[Video] write BM%d_SCROLLY: %04X\n", index, value);
+		Log::debug("[Video] write BM%d_SCROLLY: %04X\n", index, value);
 		layer->scrolly = value & 0x1FF;
 		break;
 	case 0x010:
-		printf("[Video] write BM%d_SCREENX: %04X\n", index, value);
+		Log::debug("[Video] write BM%d_SCREENX: %04X\n", index, value);
 		layer->screenx = value & 0x1FF;
 		break;
 	case 0x018:
-		printf("[Video] write BM%d_SCREENY: %04X\n", index, value);
+		Log::debug("[Video] write BM%d_SCREENY: %04X\n", index, value);
 		layer->screeny = value & 0x1FF;
 		break;
 	case 0x020:
-		printf("[Video] write BM%d_CLIPWIDTH: %04X\n", index, value);
+		Log::info("[Video] write BM%d_CLIPWIDTH: %04X\n", index, value);
 		layer->w = value & 0xFF;
 		layer->clipx = value >> 8;
 		break;
 	case 0x028:
-		printf("[Video] write BM%d_HEIGHT: %04X\n", index, value);
+		Log::info("[Video] write BM%d_HEIGHT: %04X\n", index, value);
 		layer->h = value & 0xFF;
 		break;
 	case 0x030:
-		printf("[Video] write BM_CTRL: %04X\n", value);
+		Log::info("[Video] write BM_CTRL: %04X\n", value);
 		vdp.bitmap_ctrl = value;
 		break;
 	case 0x040:
-		printf("[Video] write BM_PALSEL: %04X\n", value);
+		Log::info("[Video] write BM_PALSEL: %04X\n", value);
 		vdp.bitmap_palsel = value;
 		break;
 	case 0x050:
-		printf("[Video] write BM%d_BUFFER_CTRL: %04X\n", index, value);
+		Log::info("[Video] write BM%d_BUFFER_CTRL: %04X\n", index, value);
 		layer->buffer_ctrl = value;
 		break;
 	default:
@@ -558,7 +560,7 @@ void ctrl_write16(uint32_t addr, uint16_t value)
 	switch (addr)
 	{
 	case 0x000:
-		printf("[Video] write MODE: %04X\n", value);
+		Log::info("[Video] write MODE: %04X\n", value);
 		vdp.mode.use_pal = value & 0x1;
 		vdp.mode.extra_scanlines = (value >> 1) & 0x1;
 		vdp.mode.unk = (value >> 2) & 0x1;
@@ -578,11 +580,11 @@ void ctrl_write16(uint32_t addr, uint16_t value)
 		//Bit 0 turns on display capture, only log writes to other bits for now
 		if (value != 0x01)
 		{
-			printf("[Video] write ctrl 006: %04X\n", value);
+			Log::info("[Video] write ctrl 006: %04X\n", value);
 		}
 		break;
 	case 0x008:
-		printf("[Video] write SYNC_IRQ_CTRL: %04X\n", value);
+		Log::info("[Video] write SYNC_IRQ_CTRL: %04X\n", value);
 		vdp.sync_irq_ctrl.irq1_enable = value & 0x1;
 		vdp.sync_irq_ctrl.irq1_source = (value >> 1) & 0x1;
 		break;
@@ -672,7 +674,7 @@ void bgobj_write16(uint32_t addr, uint16_t value)
 	switch (addr)
 	{
 	case 0x000:
-		printf("[Video] write BG_CTRL: %04X\n", value);
+		Log::info("[Video] write BG_CTRL: %04X\n", value);
 		vdp.bg_ctrl.shared_maps = value & 0x1;
 		vdp.bg_ctrl.map_size = (value >> 1) & 0x3;
 		vdp.bg_ctrl.bg0_8bit = (value >> 3) & 0x1;
@@ -685,7 +687,7 @@ void bgobj_write16(uint32_t addr, uint16_t value)
 	case 0x006:
 	{
 		int index = (addr - 0x002) >> 2;
-		printf("[Video] write BG%d_SCROLLX: %04X\n", index, value);
+		Log::info("[Video] write BG%d_SCROLLX: %04X\n", index, value);
 		vdp.bg_scrollx[index] = value & 0xFFF;
 		break;
 	}
@@ -693,7 +695,7 @@ void bgobj_write16(uint32_t addr, uint16_t value)
 	case 0x008:
 	{
 		int index = (addr - 0x004) >> 2;
-		printf("[Video] write BG%d_SCROLLY: %04X\n", index, value);
+		Log::info("[Video] write BG%d_SCROLLY: %04X\n", index, value);
 		vdp.bg_scrolly[index] = value & 0xFFF;
 		break;
 	}
@@ -701,12 +703,12 @@ void bgobj_write16(uint32_t addr, uint16_t value)
 	case 0x00C:
 	{
 		int index = (addr - 0x00A) >> 1;
-		printf("[Video] write BG%d_PALSEL: %04X\n", index, value);
+		Log::info("[Video] write BG%d_PALSEL: %04X\n", index, value);
 		vdp.bg_palsel[index] = value;
 		break;
 	}
 	case 0x010:
-		printf("[Video] write OBJ_CTRL: %04X\n", value);
+		Log::info("[Video] write OBJ_CTRL: %04X\n", value);
 		vdp.obj_ctrl.id_offs = value & 0xFF;
 
 		//Note the reversed order!
@@ -718,12 +720,12 @@ void bgobj_write16(uint32_t addr, uint16_t value)
 	case 0x014:
 	{
 		int index = (addr - 0x012) >> 1;
-		printf("[Video] write OBJ%d_PALSEL: %04X\n", index, value);
+		Log::info("[Video] write OBJ%d_PALSEL: %04X\n", index, value);
 		vdp.obj_palsel[index] = value;
 		break;
 	}
 	case 0x020:
-		printf("[Video] write TILEBASE: %04X\n", value);
+		Log::info("[Video] write TILEBASE: %04X\n", value);
 		vdp.tilebase = value & 0xFF;
 		break;
 	default:
@@ -808,7 +810,7 @@ void display_write16(uint32_t addr, uint16_t value)
 	{
 	case 0x000:
 		vdp.dispmode = value & 0x7;
-		printf("[Video] write DISPMODE: %04X\n", value);
+		Log::info("[Video] write DISPMODE: %04X\n", value);
 		break;
 	case 0x002:
 		for (int i = 0; i < 2; i++)
@@ -826,7 +828,7 @@ void display_write16(uint32_t addr, uint16_t value)
 		vdp.layer_ctrl.bitmap_screen_mode[1] = (value >> 10) & 0x3;
 		vdp.layer_ctrl.obj_screen_mode[0] = (value >> 12) & 0x3;
 		vdp.layer_ctrl.obj_screen_mode[1] = value >> 14;
-		printf("[Video] write LAYER_CTRL: %04X\n", value);
+		Log::info("[Video] write LAYER_CTRL: %04X\n", value);
 		break;
 	case 0x004:
 		vdp.color_prio.prio_mode = value & 0xF;
@@ -834,7 +836,7 @@ void display_write16(uint32_t addr, uint16_t value)
 		vdp.color_prio.output_screen_b = (value >> 5) & 0x1;
 		vdp.color_prio.output_screen_a = (value >> 6) & 0x1;
 		vdp.color_prio.blend_mode = (value >> 7) & 0x1;
-		printf("[Video] write COLORPRIO: %04X\n", value);
+		Log::info("[Video] write COLORPRIO: %04X\n", value);
 		break;
 	case 0x006:
 		//Note the reversed order!
@@ -866,7 +868,7 @@ uint8_t irq_read8(uint32_t addr)
 uint16_t irq_read16(uint32_t addr)
 {
 	addr &= 0xFFF;
-	
+
 	switch (addr)
 	{
 	case 0x002:
@@ -902,7 +904,7 @@ void irq_write16(uint32_t addr, uint16_t value)
 		vdp.cmp_irq_ctrl.nmi_enable = (value >> 2) & 0x1;
 		vdp.cmp_irq_ctrl.use_vcmp = (value >> 5) & 0x1;
 		vdp.cmp_irq_ctrl.irq0_enable2 = (value >> 7) & 0x1;
-		printf("[VDP] write CMP_IRQ_CTRL: %04X\n", value);
+		Log::info("[VDP] write CMP_IRQ_CTRL: %04X\n", value);
 		break;
 	case 0x002:
 		vdp.irq0_hcmp = value & 0x1FF;
@@ -956,7 +958,7 @@ void dma_ctrl_write16(uint32_t addr, uint16_t value)
 	switch (addr)
 	{
 	case 0x000:
-		printf("[Video] write dma ctrl 000: %04X\n", value);
+		Log::info("[Video] write dma ctrl 000: %04X\n", value);
 		break;
 	case 0x002:
 		//TODO: what does bit 8 do? Seems to have no effect in HW tests at this time
@@ -1020,4 +1022,4 @@ void dma_write32(uint32_t addr, uint32_t value)
 	assert(0);
 }
 
-}
+}  // namespace Video
