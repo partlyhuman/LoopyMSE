@@ -32,7 +32,6 @@ void initialize()
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
 	{
 		printf("Failed to initialize SDL2: %s\n", SDL_GetError());
-
 		exit(0);
 	}
 
@@ -82,81 +81,135 @@ std::string remove_extension(std::string file_path)
 	return file_path.substr(0, pos);
 }
 
+enum OrdinalArgument
+{
+	GAME_ROM,
+	BIOS,
+	SOUND_BIOS,
+};
+
 int main(int argc, char** argv)
 {
+	auto print_usage = [&]() { printf("Usage: %s <game ROM> <BIOS> [sound BIOS]\n", argv[0]); };
+
 	if (argc < 3)
 	{
 		//Sound ROM currently optional
-		printf("Args: <game ROM> <BIOS> [sound BIOS]\n");
+		print_usage();
 		return 1;
 	}
 
 	SDL::initialize();
-
-	std::string cart_name = argv[1];
-	std::string bios_name = argv[2];
-
 	Config::SystemInfo config = {};
+	SDL_LogSetAllPriority(SDL_LOG_PRIORITY_ERROR);
 
-	std::ifstream cart_file(cart_name, std::ios::binary);
-	if (!cart_file.is_open())
+	for (int i = 1, ordinal = 0; i < argc; i++)
 	{
-		printf("Failed to open %s\n", cart_name.c_str());
-		return 1;
-	}
+		std::string arg = argv[i];
 
-	config.cart.rom.assign(std::istreambuf_iterator<char>(cart_file), {});
-	cart_file.close();
-
-	std::ifstream bios_file(bios_name, std::ios::binary);
-	if (!bios_file.is_open())
-	{
-		printf("Failed to open %s\n", bios_name.c_str());
-		return 1;
-	}
-
-	config.bios_rom.assign(std::istreambuf_iterator<char>(bios_file), {});
-	bios_file.close();
-
-	// If last argument is given, load the sound ROM
-	if (argc >= 4)
-	{
-		std::string sound_rom_name = argv[3];
-		std::ifstream sound_rom_file(sound_rom_name, std::ios::binary);
-		if (!sound_rom_file.is_open())
+		//Parse flag arguments anywhere they appear
+		if (arg.length() > 0 && arg[0] == '-')
 		{
-			printf("Failed to open %s\n", sound_rom_name.c_str());
-			return 1;
+			if (arg == "-v" || arg == "--verbose")
+			{
+				SDL_LogSetAllPriority(SDL_LOG_PRIORITY_VERBOSE);
+				continue;
+			}
 		}
 
-		config.sound_rom.assign(std::istreambuf_iterator<char>(sound_rom_file), {});
-		sound_rom_file.close();
+		//Parse ordinal arguments
+		switch (ordinal)
+		{
+		case GAME_ROM:
+		{
+			std::ifstream cart_file(arg, std::ios::binary);
+			if (!cart_file.is_open())
+			{
+				printf("Failed to open %s\n", arg.c_str());
+				print_usage();
+				return 1;
+			}
+
+			config.cart.rom.assign(std::istreambuf_iterator<char>(cart_file), {});
+			cart_file.close();
+
+			//Determine the size of SRAM from the cartridge header
+			uint32_t sram_start, sram_end;
+			memcpy(&sram_start, config.cart.rom.data() + 0x10, 4);
+			memcpy(&sram_end, config.cart.rom.data() + 0x14, 4);
+			uint32_t sram_size = Common::bswp32(sram_end) - Common::bswp32(sram_start) + 1;
+
+			//Attempt to load SRAM from a file
+			config.cart.sram_file_path = remove_extension(arg) + ".sav";
+			std::ifstream sram_file(config.cart.sram_file_path, std::ios::binary);
+			if (!sram_file.is_open())
+			{
+				printf("Warning: SRAM not found\n");
+			}
+			else
+			{
+				printf("Successfully found SRAM\n");
+				config.cart.sram.assign(std::istreambuf_iterator<char>(sram_file), {});
+				sram_file.close();
+			}
+
+			//Ensure SRAM is at the proper size. If no file is loaded, it will be filled with 0xFF.
+			//If a file was loaded but was smaller than the SRAM size, the uninitialized bytes will be 0xFF.
+			//If the file was larger, then the vector size is clamped
+			config.cart.sram.resize(sram_size, 0xFF);
+
+			ordinal++;
+			continue;
+		}
+		case BIOS:
+		{
+			std::ifstream bios_file(arg, std::ios::binary);
+			if (!bios_file.is_open())
+			{
+				printf("Failed to open %s\n", arg.c_str());
+				print_usage();
+				return 1;
+			}
+
+			config.bios_rom.assign(std::istreambuf_iterator<char>(bios_file), {});
+			bios_file.close();
+			ordinal++;
+			continue;
+		}
+		case SOUND_BIOS:
+		{
+			std::ifstream sound_rom_file(arg, std::ios::binary);
+			if (!sound_rom_file.is_open())
+			{
+				printf("Failed to open %s\n", arg.c_str());
+				print_usage();
+				return 1;
+			}
+
+			config.sound_rom.assign(std::istreambuf_iterator<char>(sound_rom_file), {});
+			sound_rom_file.close();
+			ordinal++;
+			continue;
+		}
+		default:
+			//Ignore any further arguments
+			break;
+		}
 	}
 
-	//Determine the size of SRAM from the cartridge header
-	uint32_t sram_start, sram_end;
-	memcpy(&sram_start, config.cart.rom.data() + 0x10, 4);
-	memcpy(&sram_end, config.cart.rom.data() + 0x14, 4);
-	uint32_t sram_size = Common::bswp32(sram_end) - Common::bswp32(sram_start) + 1;
-
-	//Attempt to load SRAM from a file
-	config.cart.sram_file_path = remove_extension(cart_name) + ".sav";
-	std::ifstream sram_file(config.cart.sram_file_path, std::ios::binary);
-	if (!sram_file.is_open())
+	if (config.bios_rom.empty())
 	{
-		printf("Warning: SRAM not found\n");
-	}
-	else
-	{
-		printf("Successfully found SRAM\n");
-		config.cart.sram.assign(std::istreambuf_iterator<char>(sram_file), {});
-		sram_file.close();
+		printf("Missing BIOS file.\n");
+		print_usage();
+		return 1;
 	}
 
-	//Ensure SRAM is at the proper size. If no file is loaded, it will be filled with 0xFF.
-	//If a file was loaded but was smaller than the SRAM size, the uninitialized bytes will be 0xFF.
-	//If the file was larger, then the vector size is clamped
-	config.cart.sram.resize(sram_size, 0xFF);
+	if (config.cart.rom.empty())
+	{
+		printf("Missing Cartridge ROM file.\n");
+		print_usage();
+		return 1;
+	}
 
 	//Initialize the emulator and all of its subprojects
 	System::initialize(config);
