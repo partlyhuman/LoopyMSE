@@ -1,4 +1,4 @@
-add_executable (Rupi
+add_executable (LoopyMSE
 				"main.cpp")
 
-target_link_libraries (Rupi PRIVATE core SDL2-static)
+target_link_libraries (LoopyMSE PRIVATE core SDL2-static)
