@@ -33,6 +33,7 @@ Special keys:
 | Key | Function |
 | --- | -------- |
 | F10 | Screenshot current frame to output_display.bmp |
+| F11 | Toggle fullscreen |
 | F12 | Reboot Loopy |
 |  =  | Increase integer scale |
 |  -  | Decrease integer scale |
