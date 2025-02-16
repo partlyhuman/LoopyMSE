@@ -5,8 +5,18 @@
 #include <cstdarg>
 #include <cstdio>
 
+static void log_internal(void *userdata, int category, SDL_LogPriority priority, const char *message)
+{
+	printf("%s\n", message);
+}
+
 namespace Log
 {
+
+void init()
+{
+	SDL_LogSetOutputFunction(&log_internal, NULL);
+}
 
 void debug(const char *fmt, ...)
 {

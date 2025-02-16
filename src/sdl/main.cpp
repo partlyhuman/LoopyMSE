@@ -3,6 +3,7 @@
 #include <core/config.h>
 #include <core/system.h>
 #include <input/input.h>
+#include <log/log.h>
 #include <sound/sound.h>
 #include <video/video.h>
 
@@ -35,6 +36,7 @@ void initialize()
 {
 	//Allow use of our own main()
 	SDL_SetMainReady();
+	Log::init();
 
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
 	{
