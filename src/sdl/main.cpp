@@ -24,12 +24,15 @@ struct Screen
 	bool fullscreen;
 };
 
-static int INTEGER_SCALE = 4;
+static int INTEGER_SCALE = 2;
 static Screen screen;
 static SDL_GameController* controller;
 
 void initialize()
 {
+	//Allow use of our own main()
+	SDL_SetMainReady();
+
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
 	{
 		printf("Failed to initialize SDL2: %s\n", SDL_GetError());
