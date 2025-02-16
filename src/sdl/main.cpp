@@ -197,6 +197,13 @@ int main(int argc, char** argv)
 
 	auto print_usage = [&]() { printf("Usage: %s [game ROM] [BIOS] [sound BIOS] [-v/--verbose]\n", argv[0]); };
 
+	auto peer_file_path = [&](const char* filename)
+	{
+		fs::path exe_path(argv[0]);
+		exe_path = (exe_path.empty() || exe_path == ".") ? fs::current_path() : fs::absolute(exe_path);
+		return exe_path.parent_path().string() + "/" + filename;
+	};
+
 	bool has_quit = false;
 	bool is_paused = false;
 
@@ -239,13 +246,10 @@ int main(int argc, char** argv)
 		}
 	}
 
-	fs::path program_path(argv[0]);
-	std::string program_dir = program_path.parent_path().string();
-
 	if (config.bios_rom.empty())
 	{
 		// Strip the executable name to get the directory
-		if (!load_bios(config, program_dir + "/" + DEFAULT_BIOS_PATH))
+		if (!load_bios(config, peer_file_path("bios.bin")))
 		{
 			printf("Error: Missing BIOS file. Provide by argument, or place in %s.\n", DEFAULT_BIOS_PATH.c_str());
 			print_usage();
@@ -255,7 +259,7 @@ int main(int argc, char** argv)
 
 	if (config.sound_rom.empty())
 	{
-		if (!load_sound_bios(config, program_dir + "/" + DEFAULT_SOUND_BIOS_PATH))
+		if (!load_sound_bios(config, peer_file_path("soundbios.bin")))
 		{
 			printf(
 				"Missing sound bios file. Provide by argument, or place in %s.\n"
@@ -305,7 +309,7 @@ int main(int argc, char** argv)
 	{
 		printf("Could not initialize game controllers: %s\n", SDL_GetError());
 	}
-	else if (SDL_GameControllerAddMappingsFromFile("gamecontrollerdb.txt") < 0)
+	else if (SDL_GameControllerAddMappingsFromFile(peer_file_path("gamecontrollerdb.txt").c_str()) < 0)
 	{
 		// Potentially continue without the mappings?
 		printf("Could not load game controller database: %s\n", SDL_GetError());
