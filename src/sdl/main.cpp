@@ -46,6 +46,9 @@ void initialize()
 	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 	//Nearest neighbour scaling
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+	SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "1");
+	//Helps stuttering after app backgrounded/foregrounded on MacOS
+	SDL_SetHint(SDL_HINT_MAC_OPENGL_ASYNC_DISPATCH, "0");
 
 	//Set up SDL screen
 	SDL_CreateWindowAndRenderer(INTEGER_SCALE * DISPLAY_WIDTH, INTEGER_SCALE * DISPLAY_HEIGHT, 0, &screen.window,
@@ -77,6 +80,7 @@ void update(uint16_t* display_output)
 {
 	// Draw screen
 	SDL_UpdateTexture(screen.texture, NULL, display_output, sizeof(uint16_t) * DISPLAY_WIDTH);
+	SDL_RenderClear(screen.renderer);
 	SDL_RenderCopy(screen.renderer, screen.texture, NULL, NULL);
 	SDL_RenderPresent(screen.renderer);
 }
