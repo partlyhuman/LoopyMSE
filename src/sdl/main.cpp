@@ -21,6 +21,7 @@ struct Screen
 	SDL_Renderer* renderer;
 	SDL_Window* window;
 	SDL_Texture* texture;
+	bool fullscreen;
 };
 
 static int INTEGER_SCALE = 4;
@@ -37,6 +38,8 @@ void initialize()
 
 	//Try synchronizing drawing to VBLANK
 	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
+	//Nearest neighbour scaling
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
 
 	//Set up SDL screen
 	SDL_CreateWindowAndRenderer(INTEGER_SCALE * DISPLAY_WIDTH, INTEGER_SCALE * DISPLAY_HEIGHT, 0, &screen.window,
@@ -45,6 +48,7 @@ void initialize()
 	SDL_SetWindowSize(screen.window, INTEGER_SCALE * DISPLAY_WIDTH, INTEGER_SCALE * DISPLAY_HEIGHT);
 	SDL_SetWindowResizable(screen.window, SDL_TRUE);
 	SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+	SDL_RenderSetIntegerScale(screen.renderer, SDL_TRUE);
 
 	screen.texture = SDL_CreateTexture(screen.renderer, SDL_PIXELFORMAT_ARGB1555, SDL_TEXTUREACCESS_STREAMING,
 									   DISPLAY_WIDTH, DISPLAY_HEIGHT);
@@ -85,7 +89,20 @@ void get_controller()
 
 void resize_window()
 {
-	SDL_SetWindowSize(screen.window, INTEGER_SCALE * DISPLAY_WIDTH, INTEGER_SCALE * DISPLAY_HEIGHT);
+	if (!screen.fullscreen)
+	{
+		SDL_SetWindowSize(screen.window, INTEGER_SCALE * DISPLAY_WIDTH, INTEGER_SCALE * DISPLAY_HEIGHT);
+	}
+}
+
+void toggle_fullscreen()
+{
+	if (SDL_SetWindowFullscreen(screen.window, screen.fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
+	{
+		printf("Error fullscreening: %s\n", SDL_GetError());
+		return;
+	}
+	screen.fullscreen = !screen.fullscreen;
 }
 
 }  // namespace SDL
@@ -302,6 +319,9 @@ int main(int argc, char** argv)
 					printf("Dumping frame...\n");
 					Video::dump_current_frame();
 					break;
+				case SDLK_F11:
+					SDL::toggle_fullscreen();
+					break;
 				case SDLK_F12:
 					printf("Rebooting Loopy...\n");
 					System::shutdown();
@@ -314,6 +334,12 @@ int main(int argc, char** argv)
 				case SDLK_EQUALS:
 					SDL::INTEGER_SCALE = std::min(8, SDL::INTEGER_SCALE + 1);
 					SDL::resize_window();
+					break;
+				case SDLK_ESCAPE:
+					if (SDL::screen.fullscreen)
+					{
+						SDL::toggle_fullscreen();
+					}
 					break;
 				default:
 					Input::set_key_state(keycode, false);
