@@ -3,7 +3,9 @@
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_EXTENSIONS OFF)
-set (CMAKE_EXE_LINKER_FLAGS "-static")
+if (WIN32)
+    set(CMAKE_EXE_LINKER_FLAGS "-static")
+endif()
 
 project (LoopyMSE LANGUAGES C CXX ASM)
 
@@ -18,12 +20,12 @@ set (SDL_TEST OFF CACHE BOOL "" FORCE)
 add_subdirectory (src)
 add_subdirectory (externals/SDL)
 
-set(DIST_DIR "${CMAKE_BINARY_DIR}/dist")
-set(ASSETS_DIR "${CMAKE_INSTALL_NAME_DIR}/../assets")
+set (DIST_DIR "${CMAKE_BINARY_DIR}/dist")
+set (ASSETS_DIR "${CMAKE_INSTALL_NAME_DIR}/../assets")
 
-install(TARGETS LoopyMSE
+install (TARGETS LoopyMSE
         RUNTIME DESTINATION ${DIST_DIR})
 
-install(DIRECTORY "assets/"
+install (DIRECTORY "assets/"
         DESTINATION ${DIST_DIR}
         FILES_MATCHING PATTERN "*")

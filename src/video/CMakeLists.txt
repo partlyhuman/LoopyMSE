@@ -5,4 +5,4 @@ add_library (video STATIC
 			 "video.cpp"
 			 "video.h")
 
-target_link_libraries(video PRIVATE log)
+target_link_libraries (video PRIVATE log)
