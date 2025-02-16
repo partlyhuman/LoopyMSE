@@ -72,7 +72,7 @@ void update(uint16_t* display_output)
 	SDL_RenderPresent(screen.renderer);
 }
 
-void get_controller()
+void open_first_controller()
 {
 	// Gets the first controller available
 	for (int i = 0; i < SDL_NumJoysticks(); i++)
@@ -283,7 +283,7 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		SDL::get_controller();
+		SDL::open_first_controller();
 	}
 
 	bool has_quit = false;
@@ -367,7 +367,7 @@ int main(int argc, char** argv)
 				if (!SDL::controller)
 				{
 					SDL_Log("New controller added.");
-					SDL::controller = SDL_GameControllerOpen(e.cdevice.which);
+					SDL::open_first_controller();
 				}
 				break;
 			case SDL_CONTROLLERDEVICEREMOVED:
@@ -377,7 +377,7 @@ int main(int argc, char** argv)
 				{
 					SDL_Log("Controller removed, using next available one.");
 					SDL_GameControllerClose(SDL::controller);
-					SDL::get_controller();
+					SDL::open_first_controller();
 				}
 				break;
 			}
