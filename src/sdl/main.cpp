@@ -8,7 +8,10 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
+
+namespace fs = std::filesystem;
 
 namespace SDL
 {
@@ -236,9 +239,13 @@ int main(int argc, char** argv)
 		}
 	}
 
+	fs::path program_path(argv[0]);
+	std::string program_dir = program_path.parent_path().string();
+
 	if (config.bios_rom.empty())
 	{
-		if (!load_bios(config, DEFAULT_BIOS_PATH))
+		// Strip the executable name to get the directory
+		if (!load_bios(config, program_dir + "/" + DEFAULT_BIOS_PATH))
 		{
 			printf("Error: Missing BIOS file. Provide by argument, or place in %s.\n", DEFAULT_BIOS_PATH.c_str());
 			print_usage();
@@ -248,7 +255,7 @@ int main(int argc, char** argv)
 
 	if (config.sound_rom.empty())
 	{
-		if (!load_sound_bios(config, DEFAULT_SOUND_BIOS_PATH))
+		if (!load_sound_bios(config, program_dir + "/" + DEFAULT_SOUND_BIOS_PATH))
 		{
 			printf(
 				"Missing sound bios file. Provide by argument, or place in %s.\n"
