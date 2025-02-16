@@ -11,6 +11,11 @@ struct CartInfo
 	std::vector<uint8_t> rom;
 	std::vector<uint8_t> sram;
 	std::string sram_file_path;
+
+	bool is_loaded()
+	{
+		return !rom.empty();
+	}
 };
 
 struct SystemInfo
@@ -20,4 +25,4 @@ struct SystemInfo
 	std::vector<uint8_t> sound_rom;
 };
 
-}
+}  // namespace Config

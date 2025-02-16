@@ -188,7 +188,11 @@ int main(int argc, char** argv)
 {
 	const std::string DEFAULT_BIOS_PATH = "bios.bin";
 	const std::string DEFAULT_SOUND_BIOS_PATH = "soundbios.bin";
-	auto print_usage = [&]() { printf("Usage: %s <game ROM> [BIOS] [sound BIOS] [-v/--verbose]\n", argv[0]); };
+
+	auto print_usage = [&]() { printf("Usage: %s [game ROM] [BIOS] [sound BIOS] [-v/--verbose]\n", argv[0]); };
+
+	bool has_quit = false;
+	bool is_paused = false;
 
 	SDL::initialize();
 	Config::SystemInfo config = {};
@@ -229,13 +233,6 @@ int main(int argc, char** argv)
 		}
 	}
 
-	if (config.cart.rom.empty())
-	{
-		printf("Error: Missing Cartridge ROM file.\n");
-		print_usage();
-		return 1;
-	}
-
 	if (config.bios_rom.empty())
 	{
 		if (!load_bios(config, DEFAULT_BIOS_PATH))
@@ -257,8 +254,14 @@ int main(int argc, char** argv)
 		}
 	}
 
-	//Initialize the emulator and all of its subprojects
-	System::initialize(config);
+	if (config.cart.is_loaded())
+	{
+		System::initialize(config);
+	}
+	else
+	{
+		printf("Missing Cartridge ROM file. Drop a Loopy ROM onto the window to play.\n");
+	}
 
 	//All subprojects have been initialized, so it is safe to reference them now
 	Input::add_key_binding(SDLK_RETURN, Input::PAD_START);
@@ -302,11 +305,9 @@ int main(int argc, char** argv)
 		SDL::open_first_controller();
 	}
 
-	bool has_quit = false;
-	bool is_paused = false;
 	while (!has_quit)
 	{
-		if (!is_paused)
+		if (config.cart.is_loaded() && !is_paused)
 		{
 			System::run();
 			SDL::update(System::get_display_output());
@@ -332,16 +333,25 @@ int main(int argc, char** argv)
 				switch (keycode)
 				{
 				case SDLK_F10:
-					printf("Dumping frame...\n");
-					Video::dump_current_frame();
+					if (config.cart.is_loaded())
+					{
+						printf("Dumping frame...\n");
+						Video::dump_current_frame();
+					}
 					break;
 				case SDLK_F11:
-					SDL::toggle_fullscreen();
+					if (config.cart.is_loaded())
+					{
+						SDL::toggle_fullscreen();
+					}
 					break;
 				case SDLK_F12:
-					printf("Rebooting Loopy...\n");
-					System::shutdown();
-					System::initialize(config);
+					if (config.cart.is_loaded())
+					{
+						printf("Rebooting Loopy...\n");
+						System::shutdown();
+						System::initialize(config);
+					}
 					break;
 				case SDLK_MINUS:
 					SDL::INTEGER_SCALE = std::max(1, SDL::INTEGER_SCALE - 1);
@@ -397,13 +407,14 @@ int main(int argc, char** argv)
 				}
 				break;
 			case SDL_DROPFILE:
-				std::string path = e.drop.file;
-				is_paused = true;
 				System::shutdown();
+
+				std::string path = e.drop.file;
 				if (load_cart(config, path))
 				{
 					printf("Loaded %s...\n", path.c_str());
 					System::initialize(config);
+					// So you can tell that MSE is running even before you click into it
 					is_paused = false;
 				}
 				break;
