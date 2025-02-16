@@ -68,6 +68,21 @@ void update(uint16_t* display_output)
 	SDL_RenderPresent(screen.renderer);
 }
 
+SDL_GameController* get_controller()
+{
+	// Gets the first controller available
+	for (int i = 0; i < SDL_NumJoysticks(); i++)
+	{
+		if (SDL_IsGameController(i))
+		{
+			SDL_Log("Connected to game controller %s", SDL_GameControllerNameForIndex(i));
+			return SDL_GameControllerOpen(i);
+		}
+	}
+
+	return nullptr;
+}
+
 }  // namespace SDL
 
 std::string remove_extension(std::string file_path)
@@ -90,7 +105,7 @@ enum OrdinalArgument
 
 int main(int argc, char** argv)
 {
-	auto print_usage = [&]() { printf("Usage: %s <game ROM> <BIOS> [sound BIOS]\n", argv[0]); };
+	auto print_usage = [&]() { printf("Usage: %s <game ROM> <BIOS> [sound BIOS] [-v/--verbose]\n", argv[0]); };
 
 	SDL::initialize();
 	Config::SystemInfo config = {};
@@ -214,7 +229,6 @@ int main(int argc, char** argv)
 	Input::add_key_binding(SDLK_x, Input::PAD_B);
 	Input::add_key_binding(SDLK_a, Input::PAD_C);
 	Input::add_key_binding(SDLK_s, Input::PAD_D);
-
 	Input::add_key_binding(SDLK_q, Input::PAD_L1);
 	Input::add_key_binding(SDLK_w, Input::PAD_R1);
 
@@ -222,6 +236,34 @@ int main(int argc, char** argv)
 	Input::add_key_binding(SDLK_RIGHT, Input::PAD_RIGHT);
 	Input::add_key_binding(SDLK_UP, Input::PAD_UP);
 	Input::add_key_binding(SDLK_DOWN, Input::PAD_DOWN);
+
+	//Incredibly lazy hack to allow button enum to coexist with keycodes: use negatives
+	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_A, Input::PAD_A);
+	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_B, Input::PAD_B);
+	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_Y, Input::PAD_C);
+	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_X, Input::PAD_D);
+	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_LEFTSHOULDER, Input::PAD_L1);
+	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, Input::PAD_R1);
+	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_LEFT, Input::PAD_LEFT);
+	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_RIGHT, Input::PAD_RIGHT);
+	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_UP, Input::PAD_UP);
+	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_DOWN, Input::PAD_DOWN);
+	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_START, Input::PAD_START);
+
+	SDL_GameController* controller;
+	if (SDL_Init(SDL_INIT_GAMECONTROLLER) < 0)
+	{
+		printf("Could not initialize game controllers: %s\n", SDL_GetError());
+	}
+	else if (SDL_GameControllerAddMappingsFromFile("gamecontrollerdb.txt") < 0)
+	{
+		// Potentially continue without the mappings?
+		printf("Could not load game controller database: %s", SDL_GetError());
+	}
+	else
+	{
+		controller = SDL::get_controller();
+	}
 
 	bool has_quit = false;
 	bool is_paused = false;
@@ -240,6 +282,9 @@ int main(int argc, char** argv)
 			{
 			case SDL_QUIT:
 				has_quit = true;
+				break;
+			case SDL_CONTROLLERBUTTONDOWN:
+				Input::set_key_state(-e.cbutton.button, true);
 				break;
 			case SDL_KEYDOWN:
 				Input::set_key_state(e.key.keysym.sym, true);
@@ -264,6 +309,9 @@ int main(int argc, char** argv)
 				}
 				break;
 			}
+			case SDL_CONTROLLERBUTTONUP:
+				Input::set_key_state(-e.cbutton.button, false);
+				break;
 			case SDL_WINDOWEVENT:
 				switch (e.window.event)
 				{
@@ -276,6 +324,23 @@ int main(int argc, char** argv)
 					is_paused = true;
 					break;
 				}
+
+			case SDL_CONTROLLERDEVICEADDED:
+				if (!controller)
+				{
+					SDL_Log("New controller added.");
+					controller = SDL_GameControllerOpen(e.cdevice.which);
+				}
+				break;
+			case SDL_CONTROLLERDEVICEREMOVED:
+				// Only react to current device being removed
+				if (controller && e.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller)))
+				{
+					SDL_Log("Controller removed, using next available one.");
+					SDL_GameControllerClose(controller);
+					controller = SDL::get_controller();
+				}
+				break;
 			}
 		}
 	}

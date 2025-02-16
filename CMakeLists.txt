@@ -6,7 +6,7 @@ set (CMAKE_CXX_EXTENSIONS OFF)
 
 project (LoopyMSE LANGUAGES C CXX ASM)
 
-string( REPLACE "/DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+string(REPLACE "/DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 
 add_compile_definitions (SDL_MAIN_HANDLED) # Prevents SDL from touching main()
 
@@ -16,3 +16,13 @@ set (SDL_TEST OFF CACHE BOOL "" FORCE)
 
 add_subdirectory (src)
 add_subdirectory (externals/SDL)
+
+set(DIST_DIR "${CMAKE_BINARY_DIR}/dist")
+set(ASSETS_DIR "${CMAKE_INSTALL_NAME_DIR}/../assets")
+
+install(TARGETS LoopyMSE
+        RUNTIME DESTINATION ${DIST_DIR})
+
+install(DIRECTORY "assets/"
+        DESTINATION ${DIST_DIR}
+        FILES_MATCHING PATTERN "*")
