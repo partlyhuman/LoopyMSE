@@ -194,6 +194,7 @@ int main(int argc, char** argv)
 {
 	const std::string DEFAULT_BIOS_PATH = "bios.bin";
 	const std::string DEFAULT_SOUND_BIOS_PATH = "soundbios.bin";
+	const std::string CONTROLLER_DB_PATH = "gamecontrollerdb.txt";
 
 	auto print_usage = [&]() { printf("Usage: %s [game ROM] [BIOS] [sound BIOS] [-v/--verbose]\n", argv[0]); };
 
@@ -242,7 +243,7 @@ int main(int argc, char** argv)
 	if (config.bios_rom.empty())
 	{
 		// Strip the executable name to get the directory
-		if (!load_bios(config, std::string(SDL_GetBasePath()) + "bios.bin"))
+		if (!load_bios(config, std::string(SDL_GetBasePath()) + DEFAULT_BIOS_PATH))
 		{
 			printf("Error: Missing BIOS file. Provide by argument, or place in %s.\n", DEFAULT_BIOS_PATH.c_str());
 			print_usage();
@@ -252,7 +253,7 @@ int main(int argc, char** argv)
 
 	if (config.sound_rom.empty())
 	{
-		if (!load_sound_bios(config, std::string(SDL_GetBasePath()) + "soundbios.bin"))
+		if (!load_sound_bios(config, std::string(SDL_GetBasePath()) + DEFAULT_SOUND_BIOS_PATH))
 		{
 			printf(
 				"Missing sound bios file. Provide by argument, or place in %s.\n"
@@ -298,12 +299,11 @@ int main(int argc, char** argv)
 	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_DOWN, Input::PAD_DOWN);
 	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_START, Input::PAD_START);
 
-	std::string db_path = std::string(SDL_GetBasePath()) + "gamecontrollerdb.txt";
 	if (SDL_Init(SDL_INIT_GAMECONTROLLER) < 0)
 	{
 		printf("Could not initialize game controllers: %s\n", SDL_GetError());
 	}
-	else if (SDL_GameControllerAddMappingsFromFile(db_path.c_str()) < 0)
+	else if (SDL_GameControllerAddMappingsFromFile(std::string(SDL_GetBasePath() + CONTROLLER_DB_PATH).c_str()) < 0)
 	{
 		// Potentially continue without the mappings?
 		printf("Could not load game controller database: %s\n", SDL_GetError());
