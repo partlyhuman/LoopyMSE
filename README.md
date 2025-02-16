@@ -34,6 +34,8 @@ Special keys:
 | --- | -------- |
 | F10 | Screenshot current frame to output_display.bmp |
 | F12 | Reboot Loopy |
+|  =  | Increase integer scale |
+|  -  | Decrease integer scale |
 
 ## Special Thanks
 kasami - sound implementation, dumping the BIOS, HW testing, and many other valuable non-code contributions  

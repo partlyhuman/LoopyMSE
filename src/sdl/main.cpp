@@ -23,9 +23,9 @@ struct Screen
 	SDL_Texture* texture;
 };
 
-const int INTSCALE = 4;
-
+static int INTEGER_SCALE = 4;
 static Screen screen;
+static SDL_GameController* controller;
 
 void initialize()
 {
@@ -39,10 +39,10 @@ void initialize()
 	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
 	//Set up SDL screen
-	SDL_CreateWindowAndRenderer(INTSCALE * DISPLAY_WIDTH, INTSCALE * DISPLAY_HEIGHT, 0, &screen.window,
+	SDL_CreateWindowAndRenderer(INTEGER_SCALE * DISPLAY_WIDTH, INTEGER_SCALE * DISPLAY_HEIGHT, 0, &screen.window,
 								&screen.renderer);
 	SDL_SetWindowTitle(screen.window, "Loopy My Seal Emulator");
-	SDL_SetWindowSize(screen.window, INTSCALE * DISPLAY_WIDTH, INTSCALE * DISPLAY_HEIGHT);
+	SDL_SetWindowSize(screen.window, INTEGER_SCALE * DISPLAY_WIDTH, INTEGER_SCALE * DISPLAY_HEIGHT);
 	SDL_SetWindowResizable(screen.window, SDL_TRUE);
 	SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 
@@ -68,7 +68,7 @@ void update(uint16_t* display_output)
 	SDL_RenderPresent(screen.renderer);
 }
 
-SDL_GameController* get_controller()
+void get_controller()
 {
 	// Gets the first controller available
 	for (int i = 0; i < SDL_NumJoysticks(); i++)
@@ -76,11 +76,16 @@ SDL_GameController* get_controller()
 		if (SDL_IsGameController(i))
 		{
 			SDL_Log("Connected to game controller %s", SDL_GameControllerNameForIndex(i));
-			return SDL_GameControllerOpen(i);
+			controller = SDL_GameControllerOpen(i);
 		}
 	}
 
-	return nullptr;
+	controller = nullptr;
+}
+
+void resize_window()
+{
+	SDL_SetWindowSize(screen.window, INTEGER_SCALE * DISPLAY_WIDTH, INTEGER_SCALE * DISPLAY_HEIGHT);
 }
 
 }  // namespace SDL
@@ -250,7 +255,6 @@ int main(int argc, char** argv)
 	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_DOWN, Input::PAD_DOWN);
 	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_START, Input::PAD_START);
 
-	SDL_GameController* controller;
 	if (SDL_Init(SDL_INIT_GAMECONTROLLER) < 0)
 	{
 		printf("Could not initialize game controllers: %s\n", SDL_GetError());
@@ -258,11 +262,11 @@ int main(int argc, char** argv)
 	else if (SDL_GameControllerAddMappingsFromFile("gamecontrollerdb.txt") < 0)
 	{
 		// Potentially continue without the mappings?
-		printf("Could not load game controller database: %s", SDL_GetError());
+		printf("Could not load game controller database: %s\n", SDL_GetError());
 	}
 	else
 	{
-		controller = SDL::get_controller();
+		SDL::get_controller();
 	}
 
 	bool has_quit = false;
@@ -303,6 +307,14 @@ int main(int argc, char** argv)
 					System::shutdown();
 					System::initialize(config);
 					break;
+				case SDLK_MINUS:
+					SDL::INTEGER_SCALE = std::max(1, SDL::INTEGER_SCALE - 1);
+					SDL::resize_window();
+					break;
+				case SDLK_EQUALS:
+					SDL::INTEGER_SCALE = std::min(8, SDL::INTEGER_SCALE + 1);
+					SDL::resize_window();
+					break;
 				default:
 					Input::set_key_state(keycode, false);
 					break;
@@ -324,21 +336,22 @@ int main(int argc, char** argv)
 					is_paused = true;
 					break;
 				}
-
+				break;
 			case SDL_CONTROLLERDEVICEADDED:
-				if (!controller)
+				if (!SDL::controller)
 				{
 					SDL_Log("New controller added.");
-					controller = SDL_GameControllerOpen(e.cdevice.which);
+					SDL::controller = SDL_GameControllerOpen(e.cdevice.which);
 				}
 				break;
 			case SDL_CONTROLLERDEVICEREMOVED:
 				// Only react to current device being removed
-				if (controller && e.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller)))
+				if (SDL::controller &&
+					e.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(SDL::controller)))
 				{
 					SDL_Log("Controller removed, using next available one.");
-					SDL_GameControllerClose(controller);
-					controller = SDL::get_controller();
+					SDL_GameControllerClose(SDL::controller);
+					SDL::get_controller();
 				}
 				break;
 			}
