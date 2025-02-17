@@ -224,7 +224,7 @@ int main(int argc, char** argv)
 	Options::parse_commandline(argc, argv, args);
 
 	Log::set_level(args.verbose ? Log::VERBOSE : Log::INFO);
-	SDL::screen.int_scale = args.int_scale;
+	SDL::screen.int_scale = std::clamp(args.int_scale, 1, 8);
 	SDL::initialize();
 
 	if (!load_bios(config, args.bios) && !load_bios(config, BASE_PATH + args.bios))
