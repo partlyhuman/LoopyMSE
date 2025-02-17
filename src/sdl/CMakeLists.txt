@@ -4,9 +4,8 @@ add_executable (LoopyMSE
 				"main.cpp")
 
 if (WIN32)
-	target_sources(LoopyMSE PRIVATE "windows.rc")
-	set(CMAKE_EXE_LINKER_FLAGS "-static")
-	set_target_properties (LoopyMSE PROPERTIES WIN32_EXECUTABLE YES)
+	target_sources (LoopyMSE PRIVATE "windows.rc")
+	target_link_options (LoopyMSE PRIVATE -mwindows -static)
 endif()
 
 
