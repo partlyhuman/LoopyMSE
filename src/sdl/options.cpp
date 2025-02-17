@@ -51,7 +51,6 @@ void parse_commandline(int argc, char** argv, Args& args)
 		exit(0);
 	}
 
-	std::cout << args.bios << " " << vm["bios"].as<std::string>() << std::endl;
 	args.bios = vm["bios"].as<std::string>();
 	args.sound_bios = vm["sound_bios"].as<std::string>();
 	args.cart = vm["cart"].as<std::string>();
