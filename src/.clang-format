@@ -8,3 +8,4 @@ PointerAlignment: Left
 IndentCaseLabels: false
 ReflowComments: false
 AllowShortFunctionsOnASingleLine: None
+AlignAfterOpenBracket: BlockIndent

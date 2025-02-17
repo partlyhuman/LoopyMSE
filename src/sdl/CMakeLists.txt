@@ -1,4 +1,6 @@
 add_executable (LoopyMSE
+				"options.h"
+				"options.cpp"
 				"main.cpp")
 
 if (WIN32)

@@ -10,9 +10,11 @@ string(REPLACE "/DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_R
 
 cmake_policy(SET CMP0167 NEW)
 
+# Boost program_options package, statically linked
 set(Boost_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
 find_package(Boost REQUIRED COMPONENTS program_options)
 
+# SDL2, statically linked
 add_compile_definitions (SDL_MAIN_HANDLED) # Prevents SDL from touching main()
 set (SDL_STATIC ON CACHE BOOL "" FORCE)
 set (SDL_SHARED OFF CACHE BOOL "" FORCE)

@@ -7,12 +7,12 @@
 #include <sound/sound.h>
 #include <video/video.h>
 
-#include <boost/program_options.hpp>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
+
+#include "options.h"
 
 namespace fs = std::filesystem;
 namespace po = boost::program_options;
@@ -28,11 +28,11 @@ struct Screen
 	SDL_Renderer* renderer;
 	SDL_Window* window;
 	SDL_Texture* texture;
-	bool fullscreen = false;
-	int int_scale = 2;
+	bool fullscreen;
+	int int_scale;
 };
 
-static Screen screen = {};
+static Screen screen;
 static SDL_GameController* controller;
 
 void initialize()
@@ -40,7 +40,7 @@ void initialize()
 	//Allow use of our own main()
 	SDL_SetMainReady();
 
-	if (SDL_Init(SDL_INIT_VIDEO) < 0)
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0)
 	{
 		Log::error("Failed to initialize SDL2: %s", SDL_GetError());
 		exit(0);
@@ -55,16 +55,18 @@ void initialize()
 	SDL_SetHint(SDL_HINT_MAC_OPENGL_ASYNC_DISPATCH, "0");
 
 	//Set up SDL screen
-	SDL_CreateWindowAndRenderer(screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT, 0, &screen.window,
-								&screen.renderer);
+	SDL_CreateWindowAndRenderer(
+		screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT, 0, &screen.window, &screen.renderer
+	);
 	SDL_SetWindowTitle(screen.window, "Loopy My Seal Emulator");
 	SDL_SetWindowSize(screen.window, screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT);
 	SDL_SetWindowResizable(screen.window, SDL_TRUE);
 	SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 	SDL_RenderSetIntegerScale(screen.renderer, SDL_TRUE);
 
-	screen.texture = SDL_CreateTexture(screen.renderer, SDL_PIXELFORMAT_ARGB1555, SDL_TEXTUREACCESS_STREAMING,
-									   DISPLAY_WIDTH, DISPLAY_HEIGHT);
+	screen.texture = SDL_CreateTexture(
+		screen.renderer, SDL_PIXELFORMAT_ARGB1555, SDL_TEXTUREACCESS_STREAMING, DISPLAY_WIDTH, DISPLAY_HEIGHT
+	);
 
 	//Allow dropping a ROM onto the window
 	SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
@@ -215,116 +217,45 @@ int main(int argc, char** argv)
 	bool has_quit = false;
 	bool is_paused = false;
 
+	Config::SystemInfo config;
+	Options::Args args;
+
+	Options::parse_config(BASE_PATH + INI_PATH, args);
+	Options::parse_commandline(argc, argv, args);
+
+	Log::set_level(args.verbose ? Log::VERBOSE : Log::INFO);
+	SDL::screen.int_scale = args.int_scale;
 	SDL::initialize();
-	Config::SystemInfo config = {};
-	Log::set_level(Log::INFO);
 
-	po::variables_map vm;
-	po::options_description options;
-
-	auto print_usage = [&]() { std::cout << "Usage:" << std::endl << options << std::endl; };
-
-	options.add_options()("bios", po::value<std::string>()->default_value("bios.bin"), "Path to Loopy BIOS file")(
-		"soundbios", po::value<std::string>()->default_value("soundbios.bin"), "Path to Loopy sound BIOS file")(
-		"runinbackground,b", po::value<bool>()->default_value(false), "Continue emulating while in the background");
-	// TODO add loglevel, logfile, and key mappings
-
-	try
-	{
-		po::store(po::parse_config_file((BASE_PATH + INI_PATH).c_str(), options, true), vm);
-	}
-	catch (po::error& e)
-	{
-		Log::warn("No config file found at %s, or could not parse config file.", INI_PATH.c_str());
-		//nonfatal, continue
-	}
-
-	try
-	{
-		options.add_options()("help,h", "Display help message")("verbose,v", "Enable verbose output")(
-			"cart", po::value<std::string>(), "Cartridge to load (can be positional argument, omit --cart)");
-		po::positional_options_description positional_options;
-		positional_options.add("cart", -1);
-
-		po::store(po::command_line_parser(argc, argv).positional(positional_options).options(options).run(), vm);
-		po::notify(vm);
-	}
-	catch (po::error& e)
-	{
-		Log::error("Couldn't parse command line: %s", e.what());
-		print_usage();
-		return 1;
-	}
-
-	if (vm.count("help"))
-	{
-		print_usage();
-		return 0;
-	}
-
-	if (vm.count("verbose"))
-	{
-		Log::set_level(Log::VERBOSE);
-	}
-
-	auto bios_path = vm["bios"].as<std::string>();
-	if (!load_bios(config, bios_path) && !load_bios(config, BASE_PATH + bios_path))
+	if (!load_bios(config, args.bios) && !load_bios(config, BASE_PATH + args.bios))
 	{
 		Log::error("Error: Missing BIOS file. Provide by argument, or place in %s.\n", DEFAULT_BIOS_PATH.c_str());
-		print_usage();
-		return 1;
+		Options::print_usage();
+		exit(1);
 	}
 
-	auto sound_bios_path = vm["soundbios"].as<std::string>();
-	if (!load_sound_bios(config, sound_bios_path) && !load_sound_bios(config, BASE_PATH + sound_bios_path))
+	if (!load_sound_bios(config, args.sound_bios) && !load_sound_bios(config, BASE_PATH + args.sound_bios))
 	{
 		Log::warn(
 			"Missing sound bios file. Provide by argument, or place in %s.\n"
 			"Emulation will continue without sound.\n",
-			DEFAULT_SOUND_BIOS_PATH.c_str());
+			DEFAULT_SOUND_BIOS_PATH.c_str()
+		);
 	}
 
-	if (vm.count("cart") && load_cart(config, vm["cart"].as<std::string>()))
+	if (args.cart.empty())
+	{
+		Log::info("Missing Cartridge ROM file. Drop a Loopy ROM onto the window to play.");
+	}
+	else if (load_cart(config, args.cart))
 	{
 		System::initialize(config);
 	}
 	else
 	{
-		Log::info("Missing Cartridge ROM file. Drop a Loopy ROM onto the window to play.");
+		Log::error("Could not load cartridge ROM file.");
+		exit(1);
 	}
-
-	bool run_in_background = vm["runinbackground"].as<bool>();
-	// Log::debug("run in background? %d", run_in_background);
-
-	//TODO change to scancodes so that we have a consistent way to declare these in the ini
-	//TODO add all of the following to program_options with the following defaults
-	//TODO move options & config into their own files
-	Input::add_key_binding(SDLK_RETURN, Input::PAD_START);
-
-	Input::add_key_binding(SDLK_z, Input::PAD_A);
-	Input::add_key_binding(SDLK_x, Input::PAD_B);
-	Input::add_key_binding(SDLK_a, Input::PAD_C);
-	Input::add_key_binding(SDLK_s, Input::PAD_D);
-	Input::add_key_binding(SDLK_q, Input::PAD_L1);
-	Input::add_key_binding(SDLK_w, Input::PAD_R1);
-
-	Input::add_key_binding(SDLK_LEFT, Input::PAD_LEFT);
-	Input::add_key_binding(SDLK_RIGHT, Input::PAD_RIGHT);
-	Input::add_key_binding(SDLK_UP, Input::PAD_UP);
-	Input::add_key_binding(SDLK_DOWN, Input::PAD_DOWN);
-
-	//Incredibly lazy hack to allow button enum to coexist with keycodes: use negatives
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_A, Input::PAD_A);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_B, Input::PAD_B);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_Y, Input::PAD_C);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_X, Input::PAD_D);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_LEFTSHOULDER, Input::PAD_L1);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, Input::PAD_R1);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_LEFT, Input::PAD_LEFT);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_RIGHT, Input::PAD_RIGHT);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_UP, Input::PAD_UP);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_DOWN, Input::PAD_DOWN);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_START, Input::PAD_START);
 
 	if (SDL_Init(SDL_INIT_GAMECONTROLLER) < 0)
 	{
@@ -360,10 +291,11 @@ int main(int argc, char** argv)
 				Input::set_key_state(-e.cbutton.button, true);
 				break;
 			case SDL_KEYDOWN:
-				Input::set_key_state(e.key.keysym.sym, true);
+				Input::set_key_state(e.key.keysym.scancode, true);
 				break;
 			case SDL_KEYUP:
 			{
+				// TODO fix
 				SDL_Keycode keycode = e.key.keysym.sym;
 				switch (keycode)
 				{
@@ -399,9 +331,13 @@ int main(int argc, char** argv)
 					{
 						SDL::toggle_fullscreen();
 					}
+					else
+					{
+						has_quit = true;
+					}
 					break;
 				default:
-					Input::set_key_state(keycode, false);
+					Input::set_key_state(e.key.keysym.scancode, false);
 					break;
 				}
 				break;
@@ -413,14 +349,14 @@ int main(int argc, char** argv)
 				switch (e.window.event)
 				{
 				case SDL_WINDOWEVENT_FOCUS_GAINED:
-					if (!run_in_background)
+					if (!args.run_in_background)
 					{
 						Sound::set_mute(false);
 						is_paused = false;
 					}
 					break;
 				case SDL_WINDOWEVENT_FOCUS_LOST:
-					if (!run_in_background)
+					if (!args.run_in_background)
 					{
 						Sound::set_mute(true);
 						is_paused = true;

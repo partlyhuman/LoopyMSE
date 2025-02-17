@@ -15,7 +15,7 @@
 namespace Log
 {
 
-static Level level = WARN;
+static Level level = INFO;
 
 void set_level(Level l)
 {
