@@ -242,7 +242,7 @@ int main(int argc, char** argv)
 	try
 	{
 		options.add_options()("help,h", "Display help message")("verbose,v", "Enable verbose output")(
-			"cart", po::value<std::string>(), "Cartridge to load");
+			"cart", po::value<std::string>(), "Cartridge to load (can be positional argument, omit --cart)");
 		po::positional_options_description positional_options;
 		positional_options.add("cart", -1);
 

@@ -20,11 +20,6 @@ set (SDL_TEST OFF CACHE BOOL "" FORCE)
 find_package(SDL2 REQUIRED)
 include_directories(LoopyMSE PRIVATE ${SDL2_INCLUDE_DIRS})
 
-# even link in C runtime on windows (for msys-mingw-like build toolchains)
-if (WIN32)
-	set(CMAKE_EXE_LINKER_FLAGS "-static")
-endif()
-
 add_subdirectory (src)
 # add_subdirectory (externals/SDL) # TODO remove submodule
 
