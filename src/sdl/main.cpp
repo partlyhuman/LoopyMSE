@@ -227,14 +227,14 @@ int main(int argc, char** argv)
 	SDL::screen.int_scale = std::clamp(args.int_scale, 1, 8);
 	SDL::initialize();
 
-	if (!load_bios(config, args.bios) && !load_bios(config, BASE_PATH + args.bios))
+	if (!load_bios(config, BASE_PATH + args.bios) && !load_bios(config, args.bios))
 	{
 		Log::error("Error: Missing BIOS file. Provide by argument, or place in %s.\n", DEFAULT_BIOS_PATH.c_str());
 		Options::print_usage();
 		exit(1);
 	}
 
-	if (!load_sound_bios(config, args.sound_bios) && !load_sound_bios(config, BASE_PATH + args.sound_bios))
+	if (!load_sound_bios(config, BASE_PATH + args.sound_bios) && !load_sound_bios(config, args.sound_bios))
 	{
 		Log::warn(
 			"Missing sound bios file. Provide by argument, or place in %s.\n"
@@ -245,7 +245,7 @@ int main(int argc, char** argv)
 
 	if (args.cart.empty())
 	{
-		Log::info("Missing Cartridge ROM file. Drop a Loopy ROM onto the window to play.");
+		Log::info("No ROM provided. Drop a Loopy ROM onto the window to play.");
 	}
 	else if (load_cart(config, args.cart))
 	{
@@ -253,23 +253,16 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		Log::error("Could not load cartridge ROM file.");
+		Log::error("Could not load ROM file.");
 		exit(1);
 	}
 
-	if (SDL_Init(SDL_INIT_GAMECONTROLLER) < 0)
+	if (SDL_GameControllerAddMappingsFromFile((BASE_PATH + CONTROLLER_DB_PATH).c_str()) < 0)
 	{
-		Log::warn("Could not initialize game controllers: %s", SDL_GetError());
-	}
-	else if (SDL_GameControllerAddMappingsFromFile((BASE_PATH + CONTROLLER_DB_PATH).c_str()) < 0)
-	{
-		// Potentially continue without the mappings?
 		Log::warn("Could not load game controller database: %s", SDL_GetError());
+		//Nonfatal: continue without the mappings
 	}
-	else
-	{
-		SDL::open_first_controller();
-	}
+	SDL::open_first_controller();
 
 	while (!has_quit)
 	{
