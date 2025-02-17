@@ -7,12 +7,15 @@
 #include <sound/sound.h>
 #include <video/video.h>
 
+#include <boost/program_options.hpp>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 
 namespace fs = std::filesystem;
+namespace po = boost::program_options;
 
 namespace SDL
 {
@@ -132,19 +135,16 @@ std::string remove_extension(std::string file_path)
 	return file_path.substr(0, pos);
 }
 
-enum OrdinalArgument
-{
-	ARGUMENT_CART = 0,
-	ARGUMENT_BIOS,
-	ARGUMENT_SOUND_BIOS,
-};
-
 bool load_cart(Config::SystemInfo& config, std::string path)
 {
 	config.cart = {};
 
 	std::ifstream cart_file(path, std::ios::binary);
-	if (!cart_file.is_open()) return false;
+	if (!cart_file.is_open())
+	{
+		Log::error("Couldn't load cartridge at %s", path.c_str());
+		return false;
+	}
 
 	config.cart.rom.assign(std::istreambuf_iterator<char>(cart_file), {});
 	cart_file.close();
@@ -178,7 +178,11 @@ bool load_cart(Config::SystemInfo& config, std::string path)
 bool load_bios(Config::SystemInfo& config, std::string path)
 {
 	std::ifstream bios_file(path, std::ios::binary);
-	if (!bios_file.is_open()) return false;
+	if (!bios_file.is_open())
+	{
+		// Log::error("Couldn't load BIOS at %s", path.c_str());
+		return false;
+	}
 
 	config.bios_rom.assign(std::istreambuf_iterator<char>(bios_file), {});
 	bios_file.close();
@@ -188,7 +192,11 @@ bool load_bios(Config::SystemInfo& config, std::string path)
 bool load_sound_bios(Config::SystemInfo& config, std::string path)
 {
 	std::ifstream sound_rom_file(path, std::ios::binary);
-	if (!sound_rom_file.is_open()) return false;
+	if (!sound_rom_file.is_open())
+	{
+		// Log::error("Couldn't load Sound BIOS at %s", path.c_str());
+		return false;
+	}
 
 	config.sound_rom.assign(std::istreambuf_iterator<char>(sound_rom_file), {});
 	sound_rom_file.close();
@@ -200,8 +208,8 @@ int main(int argc, char** argv)
 	const std::string DEFAULT_BIOS_PATH = "bios.bin";
 	const std::string DEFAULT_SOUND_BIOS_PATH = "soundbios.bin";
 	const std::string CONTROLLER_DB_PATH = "gamecontrollerdb.txt";
-
-	auto print_usage = [&]() { printf("Usage: %s [game ROM] [BIOS] [sound BIOS] [-v/--verbose]\n", argv[0]); };
+	const std::string INI_PATH = "loopymse.ini";
+	const std::string BASE_PATH = SDL_GetBasePath();
 
 	bool has_quit = false;
 	bool is_paused = false;
@@ -210,64 +218,72 @@ int main(int argc, char** argv)
 	Config::SystemInfo config = {};
 	Log::set_level(Log::INFO);
 
-	for (int i = 1, ordinal = 0; i < argc; i++)
+	po::variables_map vm;
+	po::options_description options;
+
+	auto print_usage = [&]() { std::cout << "Usage:" << std::endl << options << std::endl; };
+
+	options.add_options()("bios", po::value<std::string>()->default_value("bios.bin"), "Path to Loopy BIOS file")(
+		"soundbios", po::value<std::string>()->default_value("soundbios.bin"), "Path to Loopy sound BIOS file")(
+		"runinbackground,b", po::value<bool>()->default_value(false), "Continue emulating while in the background");
+	// TODO add loglevel, logfile, and key mappings
+
+	try
 	{
-		std::string arg = argv[i];
-
-		//Parse flag arguments anywhere they appear
-		if (arg.length() > 0 && arg[0] == '-')
-		{
-			if (arg == "-v" || arg == "--verbose")
-			{
-				Log::set_level(Log::VERBOSE);
-				continue;
-			}
-		}
-
-		//Parse ordinal arguments
-		switch (ordinal)
-		{
-		case ARGUMENT_CART:
-			load_cart(config, arg);
-			ordinal++;
-			break;
-		case ARGUMENT_BIOS:
-			load_bios(config, arg);
-			ordinal++;
-			break;
-		case ARGUMENT_SOUND_BIOS:
-			load_sound_bios(config, arg);
-			ordinal++;
-			break;
-		default:
-			//Ignore any further arguments
-			break;
-		}
+		po::store(po::parse_config_file((BASE_PATH + INI_PATH).c_str(), options), vm);
+	}
+	catch (po::error& e)
+	{
+		Log::warn("No config file found at %s, or could not parse config file.", INI_PATH.c_str());
+		//nonfatal, continue
 	}
 
-	if (config.bios_rom.empty())
+	try
 	{
-		// Strip the executable name to get the directory
-		if (!load_bios(config, std::string(SDL_GetBasePath()) + DEFAULT_BIOS_PATH))
-		{
-			Log::error("Error: Missing BIOS file. Provide by argument, or place in %s.\n", DEFAULT_BIOS_PATH.c_str());
-			print_usage();
-			return 1;
-		}
+		options.add_options()("help,h", "Display help message")("verbose,v", "Enable verbose output")(
+			"cart", po::value<std::string>(), "Cartridge to load");
+		po::positional_options_description positional_options;
+		positional_options.add("cart", -1);
+
+		po::store(po::command_line_parser(argc, argv).positional(positional_options).options(options).run(), vm);
+		po::notify(vm);
+	}
+	catch (po::error& e)
+	{
+		Log::error("Couldn't parse command line: %s", e.what());
+		print_usage();
+		return 1;
 	}
 
-	if (config.sound_rom.empty())
+	if (vm.count("help"))
 	{
-		if (!load_sound_bios(config, std::string(SDL_GetBasePath()) + DEFAULT_SOUND_BIOS_PATH))
-		{
-			Log::warn(
-				"Missing sound bios file. Provide by argument, or place in %s.\n"
-				"Emulation will continue without sound.\n",
-				DEFAULT_SOUND_BIOS_PATH.c_str());
-		}
+		print_usage();
+		return 0;
 	}
 
-	if (config.cart.is_loaded())
+	if (vm.count("verbose"))
+	{
+		Log::set_level(Log::VERBOSE);
+	}
+
+	auto bios_path = vm["bios"].as<std::string>();
+	if (!load_bios(config, bios_path) && !load_bios(config, BASE_PATH + bios_path))
+	{
+		Log::error("Error: Missing BIOS file. Provide by argument, or place in %s.\n", DEFAULT_BIOS_PATH.c_str());
+		std::cout << options << std::endl;
+		return 1;
+	}
+
+	auto sound_bios_path = vm["soundbios"].as<std::string>();
+	if (!load_sound_bios(config, sound_bios_path) && !load_sound_bios(config, BASE_PATH + sound_bios_path))
+	{
+		Log::warn(
+			"Missing sound bios file. Provide by argument, or place in %s.\n"
+			"Emulation will continue without sound.\n",
+			DEFAULT_SOUND_BIOS_PATH.c_str());
+	}
+
+	if (vm.count("cart") && load_cart(config, vm["cart"].as<std::string>()))
 	{
 		System::initialize(config);
 	}
@@ -275,6 +291,9 @@ int main(int argc, char** argv)
 	{
 		Log::info("Missing Cartridge ROM file. Drop a Loopy ROM onto the window to play.");
 	}
+
+	bool run_in_background = vm["runinbackground"].as<bool>();
+	// Log::debug("run in background? %d", run_in_background);
 
 	//All subprojects have been initialized, so it is safe to reference them now
 	Input::add_key_binding(SDLK_RETURN, Input::PAD_START);
@@ -308,7 +327,7 @@ int main(int argc, char** argv)
 	{
 		Log::info("Could not initialize game controllers: %s", SDL_GetError());
 	}
-	else if (SDL_GameControllerAddMappingsFromFile(std::string(SDL_GetBasePath() + CONTROLLER_DB_PATH).c_str()) < 0)
+	else if (SDL_GameControllerAddMappingsFromFile((BASE_PATH + CONTROLLER_DB_PATH).c_str()) < 0)
 	{
 		// Potentially continue without the mappings?
 		Log::info("Could not load game controller database: %s", SDL_GetError());
@@ -393,12 +412,18 @@ int main(int argc, char** argv)
 				switch (e.window.event)
 				{
 				case SDL_WINDOWEVENT_FOCUS_GAINED:
-					Sound::set_mute(false);
-					is_paused = false;
+					if (!run_in_background)
+					{
+						Sound::set_mute(false);
+						is_paused = false;
+					}
 					break;
 				case SDL_WINDOWEVENT_FOCUS_LOST:
-					Sound::set_mute(true);
-					is_paused = true;
+					if (!run_in_background)
+					{
+						Sound::set_mute(true);
+						is_paused = true;
+					}
 					break;
 				}
 				break;

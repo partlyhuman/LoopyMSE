@@ -17,6 +17,10 @@ set (SDL_STATIC ON CACHE BOOL "" FORCE)
 set (SDL_SHARED OFF CACHE BOOL "" FORCE)
 set (SDL_TEST OFF CACHE BOOL "" FORCE)
 
+# Find Boost's program_options
+cmake_policy(SET CMP0167 NEW)
+find_package(Boost REQUIRED COMPONENTS program_options)
+
 add_subdirectory (src)
 add_subdirectory (externals/SDL)
 
