@@ -28,11 +28,11 @@ struct Screen
 	SDL_Renderer* renderer;
 	SDL_Window* window;
 	SDL_Texture* texture;
-	bool fullscreen;
+	bool fullscreen = false;
+	int int_scale = 2;
 };
 
-static int INTEGER_SCALE = 2;
-static Screen screen;
+static Screen screen = {};
 static SDL_GameController* controller;
 
 void initialize()
@@ -55,10 +55,10 @@ void initialize()
 	SDL_SetHint(SDL_HINT_MAC_OPENGL_ASYNC_DISPATCH, "0");
 
 	//Set up SDL screen
-	SDL_CreateWindowAndRenderer(INTEGER_SCALE * DISPLAY_WIDTH, INTEGER_SCALE * DISPLAY_HEIGHT, 0, &screen.window,
+	SDL_CreateWindowAndRenderer(screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT, 0, &screen.window,
 								&screen.renderer);
 	SDL_SetWindowTitle(screen.window, "Loopy My Seal Emulator");
-	SDL_SetWindowSize(screen.window, INTEGER_SCALE * DISPLAY_WIDTH, INTEGER_SCALE * DISPLAY_HEIGHT);
+	SDL_SetWindowSize(screen.window, screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT);
 	SDL_SetWindowResizable(screen.window, SDL_TRUE);
 	SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 	SDL_RenderSetIntegerScale(screen.renderer, SDL_TRUE);
@@ -104,11 +104,12 @@ void open_first_controller()
 	controller = nullptr;
 }
 
-void resize_window()
+void change_int_scale(int delta_int_scale)
 {
 	if (!screen.fullscreen)
 	{
-		SDL_SetWindowSize(screen.window, INTEGER_SCALE * DISPLAY_WIDTH, INTEGER_SCALE * DISPLAY_HEIGHT);
+		screen.int_scale = std::clamp(screen.int_scale + delta_int_scale, 1, 8);
+		SDL_SetWindowSize(screen.window, screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT);
 	}
 }
 
@@ -230,7 +231,7 @@ int main(int argc, char** argv)
 
 	try
 	{
-		po::store(po::parse_config_file((BASE_PATH + INI_PATH).c_str(), options), vm);
+		po::store(po::parse_config_file((BASE_PATH + INI_PATH).c_str(), options, true), vm);
 	}
 	catch (po::error& e)
 	{
@@ -295,7 +296,9 @@ int main(int argc, char** argv)
 	bool run_in_background = vm["runinbackground"].as<bool>();
 	// Log::debug("run in background? %d", run_in_background);
 
-	//All subprojects have been initialized, so it is safe to reference them now
+	//TODO change to scancodes so that we have a consistent way to declare these in the ini
+	//TODO add all of the following to program_options with the following defaults
+	//TODO move options & config into their own files
 	Input::add_key_binding(SDLK_RETURN, Input::PAD_START);
 
 	Input::add_key_binding(SDLK_z, Input::PAD_A);
@@ -325,12 +328,12 @@ int main(int argc, char** argv)
 
 	if (SDL_Init(SDL_INIT_GAMECONTROLLER) < 0)
 	{
-		Log::info("Could not initialize game controllers: %s", SDL_GetError());
+		Log::warn("Could not initialize game controllers: %s", SDL_GetError());
 	}
 	else if (SDL_GameControllerAddMappingsFromFile((BASE_PATH + CONTROLLER_DB_PATH).c_str()) < 0)
 	{
 		// Potentially continue without the mappings?
-		Log::info("Could not load game controller database: %s", SDL_GetError());
+		Log::warn("Could not load game controller database: %s", SDL_GetError());
 	}
 	else
 	{
@@ -386,12 +389,10 @@ int main(int argc, char** argv)
 					}
 					break;
 				case SDLK_MINUS:
-					SDL::INTEGER_SCALE = std::max(1, SDL::INTEGER_SCALE - 1);
-					SDL::resize_window();
+					SDL::change_int_scale(-1);
 					break;
 				case SDLK_EQUALS:
-					SDL::INTEGER_SCALE = std::min(8, SDL::INTEGER_SCALE + 1);
-					SDL::resize_window();
+					SDL::change_int_scale(1);
 					break;
 				case SDLK_ESCAPE:
 					if (SDL::screen.fullscreen)
