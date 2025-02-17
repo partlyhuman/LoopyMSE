@@ -271,7 +271,7 @@ int main(int argc, char** argv)
 	if (!load_bios(config, bios_path) && !load_bios(config, BASE_PATH + bios_path))
 	{
 		Log::error("Error: Missing BIOS file. Provide by argument, or place in %s.\n", DEFAULT_BIOS_PATH.c_str());
-		std::cout << options << std::endl;
+		print_usage();
 		return 1;
 	}
 
