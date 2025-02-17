@@ -471,40 +471,40 @@ void bitmap_reg_write16(uint32_t addr, uint16_t value)
 	switch (reg)
 	{
 	case 0x000:
-		Log::debug("[Video] write BM%d_SCROLLX: %04X\n", index, value);
+		Log::debug("[Video] write BM%d_SCROLLX: %04X", index, value);
 		layer->scrollx = value & 0x1FF;
 		break;
 	case 0x008:
-		Log::debug("[Video] write BM%d_SCROLLY: %04X\n", index, value);
+		Log::debug("[Video] write BM%d_SCROLLY: %04X", index, value);
 		layer->scrolly = value & 0x1FF;
 		break;
 	case 0x010:
-		Log::debug("[Video] write BM%d_SCREENX: %04X\n", index, value);
+		Log::debug("[Video] write BM%d_SCREENX: %04X", index, value);
 		layer->screenx = value & 0x1FF;
 		break;
 	case 0x018:
-		Log::debug("[Video] write BM%d_SCREENY: %04X\n", index, value);
+		Log::debug("[Video] write BM%d_SCREENY: %04X", index, value);
 		layer->screeny = value & 0x1FF;
 		break;
 	case 0x020:
-		Log::info("[Video] write BM%d_CLIPWIDTH: %04X\n", index, value);
+		Log::debug("[Video] write BM%d_CLIPWIDTH: %04X", index, value);
 		layer->w = value & 0xFF;
 		layer->clipx = value >> 8;
 		break;
 	case 0x028:
-		Log::info("[Video] write BM%d_HEIGHT: %04X\n", index, value);
+		Log::debug("[Video] write BM%d_HEIGHT: %04X", index, value);
 		layer->h = value & 0xFF;
 		break;
 	case 0x030:
-		Log::info("[Video] write BM_CTRL: %04X\n", value);
+		Log::debug("[Video] write BM_CTRL: %04X", value);
 		vdp.bitmap_ctrl = value;
 		break;
 	case 0x040:
-		Log::info("[Video] write BM_PALSEL: %04X\n", value);
+		Log::debug("[Video] write BM_PALSEL: %04X", value);
 		vdp.bitmap_palsel = value;
 		break;
 	case 0x050:
-		Log::info("[Video] write BM%d_BUFFER_CTRL: %04X\n", index, value);
+		Log::debug("[Video] write BM%d_BUFFER_CTRL: %04X", index, value);
 		layer->buffer_ctrl = value;
 		break;
 	default:
@@ -566,7 +566,7 @@ void ctrl_write16(uint32_t addr, uint16_t value)
 	switch (addr)
 	{
 	case 0x000:
-		Log::info("[Video] write MODE: %04X\n", value);
+		Log::debug("[Video] write MODE: %04X", value);
 		vdp.mode.use_pal = value & 0x1;
 		vdp.mode.extra_scanlines = (value >> 1) & 0x1;
 		vdp.mode.unk = (value >> 2) & 0x1;
@@ -586,11 +586,11 @@ void ctrl_write16(uint32_t addr, uint16_t value)
 		//Bit 0 turns on display capture, only log writes to other bits for now
 		if (value != 0x01)
 		{
-			Log::info("[Video] write ctrl 006: %04X\n", value);
+			Log::debug("[Video] write ctrl 006: %04X", value);
 		}
 		break;
 	case 0x008:
-		Log::info("[Video] write SYNC_IRQ_CTRL: %04X\n", value);
+		Log::debug("[Video] write SYNC_IRQ_CTRL: %04X", value);
 		vdp.sync_irq_ctrl.irq1_enable = value & 0x1;
 		vdp.sync_irq_ctrl.irq1_source = (value >> 1) & 0x1;
 		break;
@@ -680,7 +680,7 @@ void bgobj_write16(uint32_t addr, uint16_t value)
 	switch (addr)
 	{
 	case 0x000:
-		Log::info("[Video] write BG_CTRL: %04X\n", value);
+		Log::debug("[Video] write BG_CTRL: %04X", value);
 		vdp.bg_ctrl.shared_maps = value & 0x1;
 		vdp.bg_ctrl.map_size = (value >> 1) & 0x3;
 		vdp.bg_ctrl.bg0_8bit = (value >> 3) & 0x1;
@@ -693,7 +693,7 @@ void bgobj_write16(uint32_t addr, uint16_t value)
 	case 0x006:
 	{
 		int index = (addr - 0x002) >> 2;
-		Log::info("[Video] write BG%d_SCROLLX: %04X\n", index, value);
+		Log::debug("[Video] write BG%d_SCROLLX: %04X", index, value);
 		vdp.bg_scrollx[index] = value & 0xFFF;
 		break;
 	}
@@ -701,7 +701,7 @@ void bgobj_write16(uint32_t addr, uint16_t value)
 	case 0x008:
 	{
 		int index = (addr - 0x004) >> 2;
-		Log::info("[Video] write BG%d_SCROLLY: %04X\n", index, value);
+		Log::debug("[Video] write BG%d_SCROLLY: %04X", index, value);
 		vdp.bg_scrolly[index] = value & 0xFFF;
 		break;
 	}
@@ -709,12 +709,12 @@ void bgobj_write16(uint32_t addr, uint16_t value)
 	case 0x00C:
 	{
 		int index = (addr - 0x00A) >> 1;
-		Log::info("[Video] write BG%d_PALSEL: %04X\n", index, value);
+		Log::debug("[Video] write BG%d_PALSEL: %04X", index, value);
 		vdp.bg_palsel[index] = value;
 		break;
 	}
 	case 0x010:
-		Log::info("[Video] write OBJ_CTRL: %04X\n", value);
+		Log::debug("[Video] write OBJ_CTRL: %04X", value);
 		vdp.obj_ctrl.id_offs = value & 0xFF;
 
 		//Note the reversed order!
@@ -726,12 +726,12 @@ void bgobj_write16(uint32_t addr, uint16_t value)
 	case 0x014:
 	{
 		int index = (addr - 0x012) >> 1;
-		Log::info("[Video] write OBJ%d_PALSEL: %04X\n", index, value);
+		Log::debug("[Video] write OBJ%d_PALSEL: %04X", index, value);
 		vdp.obj_palsel[index] = value;
 		break;
 	}
 	case 0x020:
-		Log::info("[Video] write TILEBASE: %04X\n", value);
+		Log::debug("[Video] write TILEBASE: %04X", value);
 		vdp.tilebase = value & 0xFF;
 		break;
 	default:
@@ -816,7 +816,7 @@ void display_write16(uint32_t addr, uint16_t value)
 	{
 	case 0x000:
 		vdp.dispmode = value & 0x7;
-		Log::info("[Video] write DISPMODE: %04X\n", value);
+		Log::debug("[Video] write DISPMODE: %04X", value);
 		break;
 	case 0x002:
 		for (int i = 0; i < 2; i++)
@@ -834,7 +834,7 @@ void display_write16(uint32_t addr, uint16_t value)
 		vdp.layer_ctrl.bitmap_screen_mode[1] = (value >> 10) & 0x3;
 		vdp.layer_ctrl.obj_screen_mode[0] = (value >> 12) & 0x3;
 		vdp.layer_ctrl.obj_screen_mode[1] = value >> 14;
-		Log::info("[Video] write LAYER_CTRL: %04X\n", value);
+		Log::debug("[Video] write LAYER_CTRL: %04X", value);
 		break;
 	case 0x004:
 		vdp.color_prio.prio_mode = value & 0xF;
@@ -842,7 +842,7 @@ void display_write16(uint32_t addr, uint16_t value)
 		vdp.color_prio.output_screen_b = (value >> 5) & 0x1;
 		vdp.color_prio.output_screen_a = (value >> 6) & 0x1;
 		vdp.color_prio.blend_mode = (value >> 7) & 0x1;
-		Log::info("[Video] write COLORPRIO: %04X\n", value);
+		Log::debug("[Video] write COLORPRIO: %04X", value);
 		break;
 	case 0x006:
 		//Note the reversed order!
@@ -910,7 +910,7 @@ void irq_write16(uint32_t addr, uint16_t value)
 		vdp.cmp_irq_ctrl.nmi_enable = (value >> 2) & 0x1;
 		vdp.cmp_irq_ctrl.use_vcmp = (value >> 5) & 0x1;
 		vdp.cmp_irq_ctrl.irq0_enable2 = (value >> 7) & 0x1;
-		Log::info("[VDP] write CMP_IRQ_CTRL: %04X\n", value);
+		Log::debug("[VDP] write CMP_IRQ_CTRL: %04X", value);
 		break;
 	case 0x002:
 		vdp.irq0_hcmp = value & 0x1FF;
@@ -964,7 +964,7 @@ void dma_ctrl_write16(uint32_t addr, uint16_t value)
 	switch (addr)
 	{
 	case 0x000:
-		Log::info("[Video] write dma ctrl 000: %04X\n", value);
+		Log::debug("[Video] write dma ctrl 000: %04X", value);
 		break;
 	case 0x002:
 		//TODO: what does bit 8 do? Seems to have no effect in HW tests at this time

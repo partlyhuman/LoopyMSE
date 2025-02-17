@@ -36,11 +36,10 @@ void initialize()
 {
 	//Allow use of our own main()
 	SDL_SetMainReady();
-	Log::init();
 
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
 	{
-		printf("Failed to initialize SDL2: %s\n", SDL_GetError());
+		Log::error("Failed to initialize SDL2: %s", SDL_GetError());
 		exit(0);
 	}
 
@@ -94,7 +93,7 @@ void open_first_controller()
 	{
 		if (SDL_IsGameController(i))
 		{
-			SDL_Log("Connected to game controller %s", SDL_GameControllerNameForIndex(i));
+			Log::info("Connected to game controller %s", SDL_GameControllerNameForIndex(i));
 			controller = SDL_GameControllerOpen(i);
 		}
 	}
@@ -114,7 +113,7 @@ void toggle_fullscreen()
 {
 	if (SDL_SetWindowFullscreen(screen.window, screen.fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
 	{
-		printf("Error fullscreening: %s\n", SDL_GetError());
+		Log::error("Error fullscreening: %s", SDL_GetError());
 		return;
 	}
 	screen.fullscreen = !screen.fullscreen;
@@ -161,7 +160,7 @@ bool load_cart(Config::SystemInfo& config, std::string path)
 	std::ifstream sram_file(config.cart.sram_file_path, std::ios::binary);
 	if (!sram_file.is_open())
 	{
-		printf("Creating save state at %s.\n", config.cart.sram_file_path.c_str());
+		Log::debug("Creating save state at %s.", config.cart.sram_file_path.c_str());
 	}
 	else
 	{
@@ -209,7 +208,7 @@ int main(int argc, char** argv)
 
 	SDL::initialize();
 	Config::SystemInfo config = {};
-	SDL_LogSetAllPriority(SDL_LOG_PRIORITY_ERROR);
+	Log::set_level(Log::INFO);
 
 	for (int i = 1, ordinal = 0; i < argc; i++)
 	{
@@ -220,7 +219,7 @@ int main(int argc, char** argv)
 		{
 			if (arg == "-v" || arg == "--verbose")
 			{
-				SDL_LogSetAllPriority(SDL_LOG_PRIORITY_VERBOSE);
+				Log::set_level(Log::VERBOSE);
 				continue;
 			}
 		}
@@ -251,7 +250,7 @@ int main(int argc, char** argv)
 		// Strip the executable name to get the directory
 		if (!load_bios(config, std::string(SDL_GetBasePath()) + DEFAULT_BIOS_PATH))
 		{
-			printf("Error: Missing BIOS file. Provide by argument, or place in %s.\n", DEFAULT_BIOS_PATH.c_str());
+			Log::error("Error: Missing BIOS file. Provide by argument, or place in %s.\n", DEFAULT_BIOS_PATH.c_str());
 			print_usage();
 			return 1;
 		}
@@ -261,7 +260,7 @@ int main(int argc, char** argv)
 	{
 		if (!load_sound_bios(config, std::string(SDL_GetBasePath()) + DEFAULT_SOUND_BIOS_PATH))
 		{
-			printf(
+			Log::warn(
 				"Missing sound bios file. Provide by argument, or place in %s.\n"
 				"Emulation will continue without sound.\n",
 				DEFAULT_SOUND_BIOS_PATH.c_str());
@@ -274,7 +273,7 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		printf("Missing Cartridge ROM file. Drop a Loopy ROM onto the window to play.\n");
+		Log::info("Missing Cartridge ROM file. Drop a Loopy ROM onto the window to play.");
 	}
 
 	//All subprojects have been initialized, so it is safe to reference them now
@@ -307,12 +306,12 @@ int main(int argc, char** argv)
 
 	if (SDL_Init(SDL_INIT_GAMECONTROLLER) < 0)
 	{
-		printf("Could not initialize game controllers: %s\n", SDL_GetError());
+		Log::info("Could not initialize game controllers: %s", SDL_GetError());
 	}
 	else if (SDL_GameControllerAddMappingsFromFile(std::string(SDL_GetBasePath() + CONTROLLER_DB_PATH).c_str()) < 0)
 	{
 		// Potentially continue without the mappings?
-		printf("Could not load game controller database: %s\n", SDL_GetError());
+		Log::info("Could not load game controller database: %s", SDL_GetError());
 	}
 	else
 	{
@@ -349,7 +348,7 @@ int main(int argc, char** argv)
 				case SDLK_F10:
 					if (config.cart.is_loaded())
 					{
-						printf("Dumping frame...\n");
+						Log::info("Dumping frame...");
 						Video::dump_current_frame();
 					}
 					break;
@@ -362,7 +361,7 @@ int main(int argc, char** argv)
 				case SDLK_F12:
 					if (config.cart.is_loaded())
 					{
-						printf("Rebooting Loopy...\n");
+						Log::info("Rebooting Loopy...");
 						System::shutdown();
 						System::initialize(config);
 					}
@@ -406,7 +405,7 @@ int main(int argc, char** argv)
 			case SDL_CONTROLLERDEVICEADDED:
 				if (!SDL::controller)
 				{
-					SDL_Log("New controller added.");
+					Log::info("New controller added.");
 					SDL::open_first_controller();
 				}
 				break;
@@ -415,7 +414,7 @@ int main(int argc, char** argv)
 				if (SDL::controller &&
 					e.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(SDL::controller)))
 				{
-					SDL_Log("Controller removed, using next available one.");
+					Log::info("Controller removed, using next available one.");
 					SDL_GameControllerClose(SDL::controller);
 					SDL::open_first_controller();
 				}
@@ -426,7 +425,7 @@ int main(int argc, char** argv)
 				std::string path = e.drop.file;
 				if (load_cart(config, path))
 				{
-					printf("Loaded %s...\n", path.c_str());
+					Log::info("Loaded %s...", path.c_str());
 					System::initialize(config);
 					// So you can tell that MSE is running even before you click into it
 					is_paused = false;

@@ -1,53 +1,69 @@
 #include "log.h"
 
-#include <SDL.h>
-
 #include <cstdarg>
 #include <cstdio>
 
-static void log_internal(void *userdata, int category, SDL_LogPriority priority, const char *message)
-{
-	printf("%s\n", message);
-}
+#define PRINTF(x)          \
+	if (level > x) return; \
+	va_list args;          \
+	va_start(args, fmt);   \
+	log_level(x);          \
+	vprintf(fmt, args);    \
+	printf("\n");          \
+	va_end(args);
 
 namespace Log
 {
 
-void init()
+static Level level = WARN;
+
+void set_level(Level l)
 {
-	SDL_LogSetOutputFunction(&log_internal, NULL);
+	level = l;
+}
+
+void log_level(Level l)
+{
+	switch (l)
+	{
+	case TRACE:
+		printf("[TRACE] ");
+		break;
+	case DEBUG:
+		printf("[DEBUG] ");
+		break;
+	case INFO:
+		printf("[INFO] ");
+		break;
+	case WARN:
+		printf("[WARN] ");
+		break;
+	case ERROR:
+		printf("[ERROR] ");
+		break;
+	default:
+		break;
+	}
 }
 
 void debug(const char *fmt, ...)
 {
-	va_list args;
-	va_start(args, fmt);
-	SDL_LogMessageV(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_DEBUG, fmt, args);
-	va_end(args);
+	PRINTF(DEBUG);
 }
 
 void info(const char *fmt, ...)
 {
-	va_list args;
-	va_start(args, fmt);
-	SDL_LogMessageV(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO, fmt, args);
-	va_end(args);
+	PRINTF(INFO);
 }
 
 void warn(const char *fmt, ...)
 {
-	va_list args;
-	va_start(args, fmt);
-	SDL_LogMessageV(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_WARN, fmt, args);
-	va_end(args);
+	PRINTF(WARN);
 }
 
 void error(const char *fmt, ...)
 {
-	va_list args;
-	va_start(args, fmt);
-	SDL_LogMessageV(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_ERROR, fmt, args);
-	va_end(args);
+	PRINTF(ERROR);
 }
 
 }  // namespace Log

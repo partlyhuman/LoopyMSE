@@ -1602,7 +1602,7 @@ void run(uint16_t instr)
 	}
 	else
 	{
-		Log::error("[SH2] unrecognized instr %04X at %08X\n", instr, sh2.pc - 4);
+		Log::error("[SH2] unrecognized instr %04X at %08X", instr, sh2.pc - 4);
 		assert(0);
 	}
 }

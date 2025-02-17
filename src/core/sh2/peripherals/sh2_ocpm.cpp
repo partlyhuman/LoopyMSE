@@ -50,7 +50,7 @@ uint8_t io_read8(uint32_t addr)
 	switch (addr)
 	{
 	default:
-		Log::debug("[OCPM] read8 %08X\n", addr);
+		Log::debug("[OCPM] read8 %08X", addr);
 		return 0;
 	}
 }
@@ -77,7 +77,7 @@ uint16_t io_read16(uint32_t addr)
 	switch (addr)
 	{
 	default:
-		Log::debug("[OCPM] read16 %08X\n", addr);
+		Log::debug("[OCPM] read16 %08X", addr);
 		return 0;
 	}
 }
@@ -88,7 +88,7 @@ uint32_t io_read32(uint32_t addr)
 	switch (addr)
 	{
 	default:
-		Log::debug("[OCPM] read32 %08X\n", addr);
+		Log::debug("[OCPM] read32 %08X", addr);
 		return 0;
 	}
 }
@@ -118,7 +118,7 @@ void io_write8(uint32_t addr, uint8_t value)
 	switch (addr)
 	{
 	default:
-		Log::debug("[OCPM] write8 %08X: %02X\n", addr, value);
+		Log::debug("[OCPM] write8 %08X: %02X", addr, value);
 	}
 }
 
@@ -146,7 +146,7 @@ void io_write16(uint32_t addr, uint16_t value)
 	switch (addr)
 	{
 	default:
-		Log::debug("[OCPM] write16 %08X: %04X\n", addr, value);
+		Log::debug("[OCPM] write16 %08X: %04X", addr, value);
 	}
 }
 
@@ -161,7 +161,7 @@ void io_write32(uint32_t addr, uint32_t value)
 	switch (addr)
 	{
 	default:
-		Log::debug("[OCPM] write32 %08X: %08X\n", addr, value);
+		Log::debug("[OCPM] write32 %08X: %08X", addr, value);
 	}
 }
 

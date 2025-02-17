@@ -60,7 +60,7 @@ static bool sdl_audio_initialize()
 	// Initialize SDL audio subsystem if available
 	if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0)
 	{
-		Log::error("[Sound] SDL audio unavailable: %s\n", SDL_GetError());
+		Log::error("[Sound] SDL audio unavailable: %s", SDL_GetError());
 		return false;
 	}
 
@@ -80,7 +80,7 @@ static bool sdl_audio_initialize()
 	audio_device = SDL_OpenAudioDevice(NULL, 0, &format_desired, &format_obtained, 0);
 	if (!audio_device)
 	{
-		Log::error("[Sound] No audio device available\n");
+		Log::error("[Sound] No audio device available");
 		return false;
 	}
 
@@ -90,7 +90,7 @@ static bool sdl_audio_initialize()
 
 	// Finally enable output
 	SDL_PauseAudioDevice(audio_device, 0);
-	Log::info("[Sound] Using audio device %s\n", SDL_GetAudioDeviceName(audio_device, 0));
+	Log::debug("[Sound] Using audio device %s", SDL_GetAudioDeviceName(audio_device, 0));
 	return true;
 }
 
@@ -117,7 +117,7 @@ void initialize(std::vector<uint8_t>& sound_rom)
 
 		if (TIMEREF_ENABLE)
 		{
-			Log::info("[Sound] Schedule timeref %d Hz\n", TIMEREF_FREQUENCY);
+			Log::debug("[Sound] Schedule timeref %d Hz", TIMEREF_FREQUENCY);
 			timeref_func = Timing::register_func("Sound::timeref", timeref);
 			timeref(0, 0);
 		}
@@ -156,7 +156,7 @@ void ctrl_write8(uint32_t addr, uint8_t value)
 void ctrl_write16(uint32_t addr, uint16_t value)
 {
 	value &= 0xFFF;
-	//Log::debug("[Sound] Control register %03X\n", value);
+	//Log::debug("[Sound] Control register %03X", value);
 	//fflush(stdout);
 	if (sound_engine)
 	{
@@ -171,7 +171,7 @@ void ctrl_write32(uint32_t addr, uint32_t value)
 
 void midi_byte_in(uint8_t value)
 {
-	//Log::debug("[Sound] MIDI byte %02X\n", value);
+	//Log::debug("[Sound] MIDI byte %02X", value);
 	//fflush(stdout);
 	if (sound_engine)
 	{
@@ -182,7 +182,7 @@ void midi_byte_in(uint8_t value)
 void set_mute(bool mute_in)
 {
 	mute = mute_in;
-	Log::info("[Sound] %s output\n", mute_in ? "Muted" : "Unmuted");
+	Log::debug("[Sound] %s output", mute_in ? "Muted" : "Unmuted");
 }
 
 static void timeref(uint64_t param, int cycles_late)
