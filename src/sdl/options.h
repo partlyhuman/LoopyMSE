@@ -10,8 +10,8 @@ struct Args
 	std::string bios;
 	std::string sound_bios;
 	bool run_in_background;
-	int int_scale = 2;
 	bool verbose;
+	int int_scale = 2;
 };
 
 void parse_commandline(int argc, char** argv, Args& args);

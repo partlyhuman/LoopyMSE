@@ -2,6 +2,7 @@
 
 #include <SDL.h>
 
+#include <fstream>
 #include <iostream>
 
 #include "input/input.h"
@@ -91,25 +92,6 @@ void parse_config(std::string config_path, Args& args)
 	po::options_description options;
 	options.add(key_options).add(emu_options);
 
-	try
-	{
-		po::store(po::parse_config_file(config_path.c_str(), options, true), vm);
-		po::notify(vm);
-	}
-	catch (po::error& e)
-	{
-		Log::warn("No config file found at %s, or could not parse config file.", config_path.c_str());
-		return;
-	}
-
-	// Keymap
-	for (const auto& [cfg_key, pad_key] : CONFIG_PAD_BUTTON)
-	{
-		if (!vm.count(cfg_key)) continue;
-		auto scancode = vm[cfg_key].as<int>();
-		Input::add_key_binding(scancode, pad_key);
-	}
-
 	// Not yet in config - controller config
 	// Incredibly lazy hack to allow button enum to coexist with keycodes: use negatives
 	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_A, Input::PAD_A);
@@ -124,10 +106,51 @@ void parse_config(std::string config_path, Args& args)
 	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_DOWN, Input::PAD_DOWN);
 	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_START, Input::PAD_START);
 
-	args.bios = vm["bios"].as<std::string>();
-	args.sound_bios = vm["sound_bios"].as<std::string>();
-	args.run_in_background = vm["run_in_background"].as<bool>();
-	args.int_scale = vm["int_scale"].as<int>();
+	// Create empty ini if none found
+	// Changes failed parsing into defaults
+	if (!std::ifstream(config_path))
+	{
+		Log::info("Creating empty config in %s...", config_path.c_str());
+		std::ofstream(config_path).close();
+	}
+
+	try
+	{
+		po::store(po::parse_config_file(config_path.c_str(), options, true), vm);
+		po::notify(vm);
+
+		args.bios = vm["bios"].as<std::string>();
+		args.sound_bios = vm["sound_bios"].as<std::string>();
+		args.run_in_background = vm["run_in_background"].as<bool>();
+		args.int_scale = vm["int_scale"].as<int>();
+
+		// Keymap
+		for (const auto& [cfg_key, pad_key] : CONFIG_PAD_BUTTON)
+		{
+			if (!vm.count(cfg_key)) continue;
+			auto scancode = vm[cfg_key].as<int>();
+			Input::add_key_binding(scancode, pad_key);
+		}
+	}
+	catch (po::error& e)
+	{
+		Log::warn("No config file found at %s, or could not parse config file.", config_path.c_str());
+
+		// Ensure there are SOME key configs
+		Input::add_key_binding(SDLK_RETURN, Input::PAD_START);
+
+		Input::add_key_binding(SDLK_z, Input::PAD_A);
+		Input::add_key_binding(SDLK_x, Input::PAD_B);
+		Input::add_key_binding(SDLK_a, Input::PAD_C);
+		Input::add_key_binding(SDLK_s, Input::PAD_D);
+		Input::add_key_binding(SDLK_q, Input::PAD_L1);
+		Input::add_key_binding(SDLK_w, Input::PAD_R1);
+
+		Input::add_key_binding(SDLK_LEFT, Input::PAD_LEFT);
+		Input::add_key_binding(SDLK_RIGHT, Input::PAD_RIGHT);
+		Input::add_key_binding(SDLK_UP, Input::PAD_UP);
+		Input::add_key_binding(SDLK_DOWN, Input::PAD_DOWN);
+	}
 }
 
 }  // namespace Options
