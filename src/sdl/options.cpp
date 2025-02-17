@@ -14,7 +14,6 @@ namespace Options
 {
 
 static po::options_description commandline_opts = po::options_description("Usage");
-static po::variables_map vm;
 
 void print_usage()
 {
@@ -29,6 +28,7 @@ void parse_commandline(int argc, char** argv, Args& args)
 		("verbose,v", "Enable verbose logging output")
 		("cart", po::value<std::string>()->default_value(""), "Cartridge to load (can be positional argument, omit --cart)" );
 
+	po::variables_map vm;
 	po::positional_options_description positional_options;
 	positional_options.add("cart", -1);
 
@@ -51,6 +51,7 @@ void parse_commandline(int argc, char** argv, Args& args)
 		exit(0);
 	}
 
+	std::cout << args.bios << " " << vm["bios"].as<std::string>() << std::endl;
 	args.bios = vm["bios"].as<std::string>();
 	args.sound_bios = vm["sound_bios"].as<std::string>();
 	args.cart = vm["cart"].as<std::string>();
@@ -68,6 +69,7 @@ const std::unordered_map<std::string, Input::PadButton> CONFIG_PAD_BUTTON = {
 
 void parse_config(std::string config_path, Args& args)
 {
+	po::variables_map vm;
 	po::options_description key_options("Keys");
 	key_options.add_options()
 		("pad_start_scancode", po::value<int>()->default_value(SDL_SCANCODE_RETURN), "Start")
@@ -137,19 +139,19 @@ void parse_config(std::string config_path, Args& args)
 		Log::warn("No config file found at %s, or could not parse config file.", config_path.c_str());
 
 		// Ensure there are SOME key configs
-		Input::add_key_binding(SDLK_RETURN, Input::PAD_START);
+		Input::add_key_binding(SDL_SCANCODE_RETURN, Input::PAD_START);
 
-		Input::add_key_binding(SDLK_z, Input::PAD_A);
-		Input::add_key_binding(SDLK_x, Input::PAD_B);
-		Input::add_key_binding(SDLK_a, Input::PAD_C);
-		Input::add_key_binding(SDLK_s, Input::PAD_D);
-		Input::add_key_binding(SDLK_q, Input::PAD_L1);
-		Input::add_key_binding(SDLK_w, Input::PAD_R1);
+		Input::add_key_binding(SDL_SCANCODE_Z, Input::PAD_A);
+		Input::add_key_binding(SDL_SCANCODE_X, Input::PAD_B);
+		Input::add_key_binding(SDL_SCANCODE_A, Input::PAD_C);
+		Input::add_key_binding(SDL_SCANCODE_S, Input::PAD_D);
+		Input::add_key_binding(SDL_SCANCODE_Q, Input::PAD_L1);
+		Input::add_key_binding(SDL_SCANCODE_W, Input::PAD_R1);
 
-		Input::add_key_binding(SDLK_LEFT, Input::PAD_LEFT);
-		Input::add_key_binding(SDLK_RIGHT, Input::PAD_RIGHT);
-		Input::add_key_binding(SDLK_UP, Input::PAD_UP);
-		Input::add_key_binding(SDLK_DOWN, Input::PAD_DOWN);
+		Input::add_key_binding(SDL_SCANCODE_LEFT, Input::PAD_LEFT);
+		Input::add_key_binding(SDL_SCANCODE_RIGHT, Input::PAD_RIGHT);
+		Input::add_key_binding(SDL_SCANCODE_UP, Input::PAD_UP);
+		Input::add_key_binding(SDL_SCANCODE_DOWN, Input::PAD_DOWN);
 	}
 }
 

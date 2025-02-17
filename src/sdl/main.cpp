@@ -11,11 +11,11 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 
 #include "options.h"
 
 namespace fs = std::filesystem;
-namespace po = boost::program_options;
 
 namespace SDL
 {
@@ -180,6 +180,7 @@ bool load_cart(Config::SystemInfo& config, std::string path)
 
 bool load_bios(Config::SystemInfo& config, std::string path)
 {
+	std::cout << path << std::endl;
 	std::ifstream bios_file(path, std::ios::binary);
 	if (!bios_file.is_open())
 	{
@@ -221,7 +222,9 @@ int main(int argc, char** argv)
 	Options::Args args;
 
 	Options::parse_config(BASE_PATH + INI_PATH, args);
+	std::cout << "config bios=" << args.bios << std::endl;
 	Options::parse_commandline(argc, argv, args);
+	std::cout << "config+args bios=" << args.bios << std::endl;
 
 	Log::set_level(args.verbose ? Log::VERBOSE : Log::INFO);
 	SDL::screen.int_scale = std::clamp(args.int_scale, 1, 8);
