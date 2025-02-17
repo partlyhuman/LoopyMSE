@@ -295,24 +295,23 @@ int main(int argc, char** argv)
 				break;
 			case SDL_KEYUP:
 			{
-				// TODO fix
-				SDL_Keycode keycode = e.key.keysym.sym;
-				switch (keycode)
+				SDL_Scancode scancode = e.key.keysym.scancode;
+				switch (scancode)
 				{
-				case SDLK_F10:
+				case SDL_SCANCODE_F10:
 					if (config.cart.is_loaded())
 					{
 						Log::info("Dumping frame...");
 						Video::dump_current_frame();
 					}
 					break;
-				case SDLK_F11:
+				case SDL_SCANCODE_F11:
 					if (config.cart.is_loaded())
 					{
 						SDL::toggle_fullscreen();
 					}
 					break;
-				case SDLK_F12:
+				case SDL_SCANCODE_F12:
 					if (config.cart.is_loaded())
 					{
 						Log::info("Rebooting Loopy...");
@@ -320,13 +319,13 @@ int main(int argc, char** argv)
 						System::initialize(config);
 					}
 					break;
-				case SDLK_MINUS:
+				case SDL_SCANCODE_MINUS:
 					SDL::change_int_scale(-1);
 					break;
-				case SDLK_EQUALS:
+				case SDL_SCANCODE_EQUALS:
 					SDL::change_int_scale(1);
 					break;
-				case SDLK_ESCAPE:
+				case SDL_SCANCODE_ESCAPE:
 					if (SDL::screen.fullscreen)
 					{
 						SDL::toggle_fullscreen();
@@ -337,7 +336,7 @@ int main(int argc, char** argv)
 					}
 					break;
 				default:
-					Input::set_key_state(e.key.keysym.scancode, false);
+					Input::set_key_state(scancode, false);
 					break;
 				}
 				break;
