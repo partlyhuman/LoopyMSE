@@ -23,10 +23,11 @@ void print_usage()
 void parse_commandline(int argc, char** argv, Args& args)
 {
 	commandline_opts.add_options()
-		("bios", po::value<std::string>()->default_value("bios.bin"), "Path to Loopy BIOS file")
-		("sound_bios", po::value<std::string>()->default_value("soundbios.bin"), "Path to Loopy sound BIOS file")
+		("help,h", "Show this screen")
+		("bios", po::value<std::string>(), "Path to Loopy BIOS file")
+		("sound_bios", po::value<std::string>(), "Path to Loopy sound BIOS file")
 		("verbose,v", "Enable verbose logging output")
-		("cart", po::value<std::string>()->default_value(""), "Cartridge to load (can be positional argument, omit --cart)" );
+		("cart", po::value<std::string>(), "Cartridge to load (--cart can be omitted, use path to ROM as first positional argument)" );
 
 	po::variables_map vm;
 	po::positional_options_description positional_options;
@@ -51,9 +52,9 @@ void parse_commandline(int argc, char** argv, Args& args)
 		exit(0);
 	}
 
-	args.bios = vm["bios"].as<std::string>();
-	args.sound_bios = vm["sound_bios"].as<std::string>();
-	args.cart = vm["cart"].as<std::string>();
+	if (vm.count("bios")) args.bios = vm["bios"].as<std::string>();
+	if (vm.count("sound_bios")) args.sound_bios = vm["sound_bios"].as<std::string>();
+	if (vm.count("cart")) args.cart = vm["cart"].as<std::string>();
 	args.verbose = vm.count("verbose");
 }
 
