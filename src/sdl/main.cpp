@@ -56,11 +56,10 @@ void initialize()
 
 	//Set up SDL screen
 	SDL_CreateWindowAndRenderer(
-		screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT, 0, &screen.window, &screen.renderer
+		screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT, SDL_WINDOW_RESIZABLE, &screen.window, &screen.renderer
 	);
 	SDL_SetWindowTitle(screen.window, "Loopy My Seal Emulator");
 	SDL_SetWindowSize(screen.window, screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT);
-	SDL_SetWindowResizable(screen.window, SDL_TRUE);
 	SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 	SDL_RenderSetIntegerScale(screen.renderer, SDL_TRUE);
 
