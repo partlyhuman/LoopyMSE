@@ -74,10 +74,15 @@ void run()
 {
 	while (sh2.cycles_left)
 	{
+		//Hack to make each instruction take 2-3 cycles, a lot closer to realistic speed
+		//until we have a proper pipeline and memory-region-dependent fetch delays.
+		if ((sh2.cycles_left % 5) < 2)
+	{
 		uint16_t instr = Bus::read16(sh2.pc - 4);
 		SH2::Interpreter::run(instr);
-		sh2.cycles_left--;
 		sh2.pc += 2;
+		}
+		sh2.cycles_left -= 1;
 	}
 }
 
