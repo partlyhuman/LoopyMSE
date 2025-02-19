@@ -162,13 +162,17 @@ static void intr_event(uint64_t param, int cycles_late)
 	//Compare 2
 	if (timer->counter == timer->gen_reg[1])
 	{
-		assert(0);
+		timer->intr_flag |= 0x2;
+		if (timer->ctrl.clear_mode == 0x2)
+		{
+			clear_counter = true;
+		}
 	}
 
 	//Overflow
 	if (timer->counter == 0)
 	{
-		assert(0);
+		timer->intr_flag |= 0x4;
 	}
 
 	if (clear_counter)
@@ -289,7 +293,8 @@ void write8(uint32_t addr, uint8_t value)
 			break;
 		case 0x01:
 			Log::debug("[Timer] write timer%d io ctrl: %02X", timer->id, value);
-			assert(!value);
+			//assert(!value);
+			//For now timer IO just does nothing
 			break;
 		case 0x02:
 			Log::debug("[Timer] write timer%d intr enable: %02X", timer->id, value);

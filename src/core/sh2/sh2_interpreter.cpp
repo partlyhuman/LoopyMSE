@@ -44,9 +44,11 @@ static void handle_jump(uint32_t dst, bool delay_slot)
 	//Small hack: if in a delay slot, immediately execute the next instruction
 	if (delay_slot)
 	{
+		//Fetch from old location and execute at new location
 		sh2.pc += 2;
-
+		
 		uint16_t instr = Bus::read16(sh2.pc - 4);
+		sh2.pc = dst + 2;
 		run(instr);
 	}
 

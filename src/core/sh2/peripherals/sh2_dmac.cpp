@@ -1,3 +1,5 @@
+#include <log/log.h>
+
 #include <cassert>
 #include "core/sh2/peripherals/sh2_dmac.h"
 #include "core/sh2/sh2_bus.h"
@@ -98,6 +100,7 @@ void Channel::start_transfer()
 	//TODO: speed this up by doing memcpy if both addresses are in Memory
 	if (ctrl.transfer_16bit)
 	{
+		Log::debug("[DMAC] start 16bit transfer src:%08X dst:%08X size:%08X sstep:%d dstep:%d", src_addr, dst_addr, transfer_size, src_step, dst_step);
 		while (transfer_size && state.dreqs[ctrl.mode])
 		{
 			uint16_t value = SH2::Bus::read16(src_addr);
@@ -110,6 +113,7 @@ void Channel::start_transfer()
 	}
 	else
 	{
+		Log::debug("[DMAC] start 8bit transfer src:%08X dst:%08X size:%08X sstep:%d dstep:%d", src_addr, dst_addr, transfer_size, src_step, dst_step);
 		while (transfer_size && state.dreqs[ctrl.mode])
 		{
 			uint8_t value = SH2::Bus::read8(src_addr);

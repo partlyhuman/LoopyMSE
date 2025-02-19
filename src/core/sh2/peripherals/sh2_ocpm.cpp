@@ -28,6 +28,8 @@ constexpr static int INTC_END = 0xF90;
 
 static uint8_t oram[0x400];
 
+uint16_t read_gpio_port(int port);
+
 uint8_t io_read8(uint32_t addr)
 {
 	addr = (addr & 0x1FF) + 0xE00;
@@ -76,6 +78,9 @@ uint16_t io_read16(uint32_t addr)
 
 	switch (addr)
 	{
+	case 0xFC0:
+	case 0xFC2:
+		return read_gpio_port((addr>>1) & 1);
 	default:
 		Log::debug("[OCPM] read16 %08X", addr);
 		return 0;
@@ -199,6 +204,25 @@ void oram_write32(uint32_t addr, uint32_t value)
 {
 	value = Common::bswp32(value);
 	memcpy(&oram[addr & 0x3FF], &value, 4);
+}
+
+uint16_t read_gpio_port(int port)
+{
+	if (port == 0)
+	{
+		// Port A
+		constexpr int pa8_cart_present = 1;  //We don't run without a cartridge so this is always high
+		constexpr int pa11_unk = 0;  //Tied hard low on all known boards, BIOS copies to an unknown VDP option
+		return (pa11_unk << 11) | (pa8_cart_present << 8);
+	}
+	else if (port == 1)
+	{
+		// Port B
+		constexpr int pb1_unk = 1;  //Pulled high in most cartridges
+		constexpr int pb3_unk = 1;  //Pulled high in most cartridges
+		return (pb3_unk << 3) | (pb1_unk << 1);
+	}
+	return 0;
 }
 
 }  // namespace SH2::OCPM

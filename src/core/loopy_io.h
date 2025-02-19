@@ -19,5 +19,7 @@ void reg_write16(uint32_t addr, uint16_t value);
 void reg_write32(uint32_t addr, uint32_t value);
 
 void update_pad(int key_info, bool pressed);
+void update_print_temp();
+void update_sensors();
 
 }

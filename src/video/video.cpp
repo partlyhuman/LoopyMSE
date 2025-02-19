@@ -1,4 +1,5 @@
 #include <common/bswp.h>
+#include <core/loopy_io.h>
 #include <core/memory.h>
 #include <core/sh2/peripherals/sh2_intc.h>
 #include <core/timing.h>
@@ -583,8 +584,18 @@ void ctrl_write16(uint32_t addr, uint16_t value)
 			vdp.capture_enable = true;
 		}
 
-		//Bit 0 turns on display capture, only log writes to other bits for now
-		if (value != 0x01)
+		if (value & 0x02)
+		{
+			LoopyIO::update_print_temp();
+		}
+
+		if (value & 0x04)
+		{
+			LoopyIO::update_sensors();
+		}
+
+		//Only log writes to unimplemented bits
+		if ((value & ~0x0007) != 0x01)
 		{
 			Log::debug("[Video] write ctrl 006: %04X", value);
 		}
