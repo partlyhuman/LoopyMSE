@@ -51,8 +51,28 @@ void initialize()
 
 	sh2.pagetable = Memory::get_sh2_pagetable();
 
-	//TODO: set this to a reset vector
-	set_pc(0x0E000480);
+	//TODO: make config option to skip BIOS boot?
+	bool skip_bios_boot = false;
+	if (skip_bios_boot)
+	{
+		set_pc(0x0E000480);
+		sh2.gpr[15] = 0;
+	}
+	else
+	{
+		//The initial values of PC and SP are read from the vector table
+		int boot_type = 0;
+		uint8_t* boot_vectors = sh2.pagetable[0];
+		uint32_t reset_pc, reset_sp;
+		memcpy(&reset_pc, boot_vectors + boot_type*8 + 0, 4);
+		memcpy(&reset_sp, boot_vectors + boot_type*8 + 4, 4);
+		set_pc(Common::bswp32(reset_pc));
+		sh2.gpr[15] = Common::bswp32(reset_sp);
+	}
+
+	//Next, VBR is cleared to zero and interrupt mask bits in SR are set to 1111
+	sh2.vbr = 0;
+	sh2.sr |= 0xF << 4;
 
 	Timing::register_timer(Timing::CPU_TIMER, &sh2.cycles_left, run);
 
@@ -77,10 +97,10 @@ void run()
 		//Hack to make each instruction take 2-3 cycles, a lot closer to realistic speed
 		//until we have a proper pipeline and memory-region-dependent fetch delays.
 		if ((sh2.cycles_left % 5) < 2)
-	{
-		uint16_t instr = Bus::read16(sh2.pc - 4);
-		SH2::Interpreter::run(instr);
-		sh2.pc += 2;
+		{
+			uint16_t instr = Bus::read16(sh2.pc - 4);
+			SH2::Interpreter::run(instr);
+			sh2.pc += 2;
 		}
 		sh2.cycles_left -= 1;
 	}
