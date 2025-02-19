@@ -59,6 +59,10 @@ constexpr static int CLK2_DIVP = 128;
 // Could be a lot lower for realtime midi. Must be a power of 2.
 constexpr static int MIDI_QUEUE_CAPACITY = 2048;
 
+// There is some limit to volume ramp change per sample, to reduce crackling.
+// For now it can be edited here but should be hardcoded.
+constexpr static int VOLUME_ENV_RATE_LIMIT = 0x1FF;
+
 struct UPD937_VoiceState
 {
 	int channel, note;
@@ -66,7 +70,7 @@ struct UPD937_VoiceState
 	int pitch;
 	int volume, volume_target, volume_rate_mul, volume_rate_div, volume_rate_counter;
 	bool volume_down;
-	int volume_env, volume_env_step, volume_env_delay;
+	int volume_env, volume_env_step, volume_env_delay, volume_env_timer_phase;
 	int pitch_env, pitch_env_step, pitch_env_delay, pitch_env_value, pitch_env_rate, pitch_env_target;
 	int sample_start, sample_end, sample_loop, sample_ptr, sample_fract, sample_last_val;
 	bool sample_new;
@@ -117,7 +121,6 @@ private:
 
 	// Timer state
 	int clk2_counter = 0;
-	int delay_update_phase = 0;
 	uint32_t sample_count = 0;
 
 	// Audio output state
@@ -216,6 +219,7 @@ private:
 	int midi_queue_timestamps[MIDI_QUEUE_CAPACITY];
 	int queue_write = 0, queue_read = 0;
 	bool midi_overflowed = false;
+	int last_enqueued_timestamp = 0;
 
 public:
 	LoopySound(std::vector<uint8_t>& rom_in, float out_rate, int buffer_size);

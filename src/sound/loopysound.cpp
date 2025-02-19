@@ -259,7 +259,7 @@ int UPD937_Core::read_rom_24(int offset)
 void UPD937_Core::update_sample()
 {
 	// Clock the volume & pitch envelope generators
-	if ((sample_count % 384) == 0) update_volume_envelopes();
+	if ((sample_count % (384/4)) == 0) update_volume_envelopes();
 	int clk2_div = (int)round(CLK2_DIVP * synthesis_rate);
 	clk2_counter += CLK2_MUL;
 	if (clk2_counter >= clk2_div)
@@ -276,13 +276,14 @@ void UPD937_Core::update_sample()
 		if (vo->volume_rate_counter >= vo->volume_rate_div)
 		{
 			vo->volume_rate_counter = 0;
+			int volume_rate_mul_cap = std::min(vo->volume_rate_mul, VOLUME_ENV_RATE_LIMIT);
 			if (vo->volume_down)
 			{
-				vo->volume = std::clamp(std::max(vo->volume_target, vo->volume - vo->volume_rate_mul), 0, 65535);
+				vo->volume = std::clamp(std::max(vo->volume_target, vo->volume - volume_rate_mul_cap), 0, 65535);
 			}
 			else
 			{
-				vo->volume = std::clamp(std::min(vo->volume_target, vo->volume + vo->volume_rate_mul), 0, 65535);
+				vo->volume = std::clamp(std::min(vo->volume_target, vo->volume + volume_rate_mul_cap), 0, 65535);
 			}
 		}
 		if (vo->volume > 0)
@@ -308,16 +309,19 @@ void UPD937_Core::update_sample()
 
 void UPD937_Core::update_volume_envelopes()
 {
-	delay_update_phase = (delay_update_phase + 1) & 1;
 	// Do all at once for now
 	for (int v = 0; v < 32; v++)
 	{
 		UPD937_VoiceState *vo = &voices[v];
+		vo->volume_env_timer_phase++;
+		if (vo->volume_env_timer_phase < 4)
+			continue;
+		vo->volume_env_timer_phase = 0;
 		bool changed = false;
 		if (vo->volume_env_delay > 0)
 		{
 			// Update delay
-			if (delay_update_phase == 0) vo->volume_env_delay--;
+			vo->volume_env_delay--;
 			if (vo->volume_env_delay > 0)
 				continue;
 			else if (vo->active)
@@ -523,7 +527,7 @@ void UPD937_Core::note_on(int channel, int note)
 		}
 		else
 		{
-			vo->pitch = 0x200;	// Default for unpitched notes
+			vo->pitch = 0x200;  // Default for unpitched notes
 		}
 
 		// Setup envelope
@@ -534,6 +538,7 @@ void UPD937_Core::note_on(int channel, int note)
 		vo->volume_down = false;
 		vo->volume_env_delay = 0;
 		vo->volume_env_step = 0;
+		vo->volume_env_timer_phase = 0;
 
 		// Read first step of envelope
 		int env_rate = read_rom_8(ptr_volenv + vo->volume_env * 64 + 0);
@@ -541,7 +546,7 @@ void UPD937_Core::note_on(int channel, int note)
 		if (env_target == 0)
 		{
 			// This is a delay step
-			vo->volume_env_delay = env_rate + 1;
+			vo->volume_env_delay = (env_rate + 1) * 2;
 			vo->volume_env_step = 1;
 		}
 		else
@@ -680,7 +685,7 @@ LoopySound::LoopySound(std::vector<uint8_t> &rom_in, float out_rate, int buffer_
 
 void LoopySound::gen_sample(float out[])
 {
-	// Process midi events every 64 samples
+	// Process MIDI events every 64 samples (typically 1.5ms depending on output sample rate)
 	if ((out_sample_count & 63) == 0)
 	{
 		handle_midi_event();
@@ -811,10 +816,17 @@ bool LoopySound::enqueue_midi_byte(char midi_byte, int timestamp)
 		midi_overflowed = true;
 		return false;
 	}
+	int min_time_diff = out_rate / 3125;  // correct timestamps to approximately 31250 baud
+	int time_diff = (timestamp - last_enqueued_timestamp);  // wraparound taken care of here
+	if (time_diff < min_time_diff)
+	{
+		timestamp = last_enqueued_timestamp + min_time_diff;
+	}
 	midi_overflowed = false;
 	midi_queue_bytes[queue_write] = midi_byte;
 	midi_queue_timestamps[queue_write] = timestamp;
 	queue_write = (queue_write + 1) % MIDI_QUEUE_CAPACITY;
+	last_enqueued_timestamp = timestamp;
 	return true;
 }
 

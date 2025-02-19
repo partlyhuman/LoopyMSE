@@ -30,7 +30,8 @@ constexpr static int TARGET_SAMPLE_RATE = 48000;
 constexpr static int TARGET_BUFFER_SIZE = 2048;
 
 // Time reference to smooth out audio timing at larger buffer sizes. Assumes consistent CPU timing.
-constexpr static int TIMEREF_FREQUENCY = 100;
+// Ideally should be a multiple of the video framerate for frame-dependent sound events to sync well.
+constexpr static int TIMEREF_FREQUENCY = 240;
 constexpr static bool TIMEREF_ENABLE = TIMEREF_FREQUENCY > (TARGET_SAMPLE_RATE / TARGET_BUFFER_SIZE);
 
 // Fade up/down time in milliseconds when sound is muted e.g. by minimizing the window.
