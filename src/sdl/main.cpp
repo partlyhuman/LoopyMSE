@@ -126,6 +126,15 @@ void toggle_fullscreen()
 	screen.fullscreen = !screen.fullscreen;
 }
 
+void set_vsync_enabled(bool enable)
+{
+	if (SDL_RenderSetVSync(screen.renderer, (int)enable) != 0)
+	{
+		Log::error("Error setting vsync state: %s", SDL_GetError());
+		return;
+	}
+}
+
 }  // namespace SDL
 
 std::string remove_extension(std::string file_path)
@@ -265,11 +274,36 @@ int main(int argc, char** argv)
 	}
 	SDL::open_first_controller();
 
+	constexpr int framerate_target = 60; //TODO: get this from Video if it can be changed (e.g. for PAL mode)
+	constexpr int framerate_max_lag = 5;
+	int last_frame_ticks = SDL_GetPerformanceCounter();
 	while (!has_quit)
 	{
-		if (config.cart.is_loaded() && !is_paused)
+		//Check how much time passed since we drew the last frame
+		int ticks_per_frame = SDL_GetPerformanceFrequency()/framerate_target;
+		int now_ticks = SDL_GetPerformanceCounter();
+		int ticks_since_last_frame = now_ticks - last_frame_ticks;
+
+		//See how many we need to draw
+		//If we're vsynced to a 60Hz display with no lag, this should stay at 1 most of the time
+		int draw_frames = ticks_since_last_frame / ticks_per_frame;
+		last_frame_ticks += draw_frames * ticks_per_frame;
+
+		//If too far behind, draw one frame and start timing again from now
+		if (draw_frames > framerate_max_lag)
+		{
+			Log::warn("More than %d frames behind, skipping ahead...", framerate_max_lag);
+			last_frame_ticks = now_ticks;
+			draw_frames = 1;
+		}
+
+		if (draw_frames && !is_paused && config.cart.is_loaded())
+		{
+			while (draw_frames)
 		{
 			System::run();
+				draw_frames--;
+			}
 			SDL::update(System::get_display_output());
 		}
 
