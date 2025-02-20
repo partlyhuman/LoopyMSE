@@ -1,5 +1,5 @@
 /*
-Casio Loopy sound implementation by kasami, 2023-2024.
+Casio Loopy sound implementation by kasami, 2023-2025.
 Features a reverse-engineered uPD937 synth engine, MIDI retiming, EQ filtering and resampling.
 
 This implementation is INCOMPLETE, but mostly sufficient for Loopy emulation running original game
@@ -11,8 +11,8 @@ uPD937 library?) replaces it in the future. It was ported from a Java prototype,
 inefficiencies and things that aren't structured well for C++.
 
 Game support notes:
-- PC Collection title screen goes a bit fast and some sounds get stuck (timing issue?)
-- Wanwan has no PCM sample support, and seems to crackle on dialog sfx (same timing issue?)
+- PC Collection some sounds get stuck (appears to be a CPU timing issue)
+- Wanwan has no PCM sample support (OKI MSM6653) yet
 */
 
 #include <log/log.h>
@@ -73,6 +73,7 @@ void UPD937_Core::gen_sample(int out[])
 	for (int lr = 0; lr <= 1; lr++)
 	{
 		int accum = 0;
+		int lr_out = STEREO_SWAP ? (1-lr) : lr;
 		for (int v = 0; v < 32; v += 2)
 		{
 			UPD937_VoiceState *vo = &voices[v + lr];
@@ -90,7 +91,7 @@ void UPD937_Core::gen_sample(int out[])
 			accum += s;
 		}
 		accum = std::clamp(accum, -32767, 32767);
-		out[lr] = accum;
+		out[lr_out] = accum;
 	}
 }
 

@@ -1,5 +1,5 @@
 /*
-Casio Loopy sound implementation by kasami, 2023-2024.
+Casio Loopy sound implementation by kasami, 2023-2025.
 Features a reverse-engineered uPD937 synth engine, MIDI retiming, EQ filtering and resampling.
 
 This implementation is INCOMPLETE, but mostly sufficient for Loopy emulation running original game
@@ -11,8 +11,8 @@ uPD937 library?) replaces it in the future. It was ported from a Java prototype,
 inefficiencies and things that aren't structured well for C++.
 
 Game support notes:
-- PC Collection title screen goes a bit fast and some sounds get stuck (timing issue?)
-- Wanwan has no PCM sample support, and seems to crackle on dialog sfx (same timing issue?)
+- PC Collection some sounds get stuck (appears to be a CPU timing issue)
+- Wanwan has no PCM sample support (OKI MSM6653) yet
 */
 
 #pragma once
@@ -35,9 +35,22 @@ constexpr static float MIX_LEVEL = 0.7f;
 
 // Filters affects both high and low frequencies to approximate the hardware's resonant LPF.
 // Cutoff and resonance derived from theoretical circuit analysis.
-constexpr static bool FILTER_ENABLE = true;
+constexpr static bool  FILTER_ENABLE = true;
 constexpr static float FILTER_CUTOFF = 8247.f;
 constexpr static float FILTER_RESONANCE = 1.67f;
+
+// Keyboards used LC7881C DACs that swapped L&R due to LRCK polarity, and sound banks were designed
+// around this. The Loopy uses a uPD6379 DAC with the opposite LRCK polarity, so the reused sound-
+// banks appear to have wrong stereo. If a board revision uses the uPD6379A variant, then it would
+// behave like a keyboard. This option enables swapping (like a keyboard) when true.
+// Note that the uPD937 tone editor, if implemented, should affect L channel prior to this swap.
+constexpr static bool STEREO_SWAP = false;
+
+// Loopy sound ROM LSI352 contains a bugged drum sample that underflows and clips at max value.
+// We can work around this by finding values that go from one extreme to the other and instead clipping them.
+constexpr static bool WORKAROUND_SAMPLE_WRAP = true;
+constexpr static int  WORKAROUND_SAMPLE_WRAP_MIN = -0x760;
+constexpr static int  WORKAROUND_SAMPLE_WRAP_MAX = 0x7FE;
 
 /* Audio synthesis parameters end*/
 
@@ -62,12 +75,6 @@ constexpr static int MIDI_QUEUE_CAPACITY = 2048;
 // There is some limit to volume ramp change per sample, to reduce crackling.
 // For now it can be edited here but should be hardcoded.
 constexpr static int VOLUME_ENV_RATE_LIMIT = 0x1FF;
-
-// Loopy sound ROM LSI352 contains a bugged drum sample that underflows and clips at max value.
-// We can work around this by finding values that go from one extreme to the other and instead clipping them.
-constexpr static bool WORKAROUND_SAMPLE_WRAP = true;
-constexpr static int WORKAROUND_SAMPLE_WRAP_MIN = -0x760;
-constexpr static int WORKAROUND_SAMPLE_WRAP_MAX = 0x7FE;
 
 struct UPD937_VoiceState
 {
