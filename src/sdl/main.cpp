@@ -126,6 +126,11 @@ void toggle_fullscreen()
 	screen.fullscreen = !screen.fullscreen;
 }
 
+void set_background_color(uint8_t r, uint8_t g, uint8_t b)
+{
+	SDL_SetRenderDrawColor(screen.renderer, r, g, b, 255);
+}
+
 }  // namespace SDL
 
 std::string remove_extension(std::string file_path)
@@ -227,6 +232,7 @@ int main(int argc, char** argv)
 	Log::set_level(args.verbose ? Log::VERBOSE : Log::INFO);
 	SDL::screen.int_scale = std::clamp(args.int_scale, 1, 8);
 	SDL::initialize();
+	SDL::set_background_color(0, 0, 0);
 
 	if (!load_bios(config, BASE_PATH + args.bios) && !load_bios(config, args.bios))
 	{
