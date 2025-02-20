@@ -79,7 +79,7 @@ void UPD937_Core::gen_sample(int out[])
 			UPD937_ChannelState *ch = &channels[vo->channel];
 			if (vo->volume == 0 || ch->mute) continue;
 			int s = vo->sample_last_val;
-			int sb = (read_rom_16(vo->sample_ptr * 2) >> 4) - 0x800;
+			int sb = vo->sample_current_val;
 			int sd = ((sb - s) * vo->sample_fract) / 0x8000;
 			s += sd;
 			s = (s * vo->volume) / 65536;
@@ -297,10 +297,21 @@ void UPD937_Core::update_sample()
 			if (vo->sample_fract >= 0x8000)
 			{
 				vo->sample_fract -= 0x8000;
-				vo->sample_last_val = (read_rom_16(vo->sample_ptr * 2) >> 4) - 0x800;
+				vo->sample_last_val = vo->sample_current_val;
+				int sample_new = (read_rom_16(vo->sample_ptr * 2) >> 4) - 0x800;
+				if (WORKAROUND_SAMPLE_WRAP)
+				{
+					// Work around overflows in bugged sound ROM
+					if (vo->sample_last_val < WORKAROUND_SAMPLE_WRAP_MIN && sample_new > WORKAROUND_SAMPLE_WRAP_MAX)
+						sample_new = -0x800;
+					if (vo->sample_last_val > WORKAROUND_SAMPLE_WRAP_MAX && sample_new < WORKAROUND_SAMPLE_WRAP_MIN)
+						sample_new = 0x7FF;
+				}
+				vo->sample_current_val = sample_new;
 				vo->sample_ptr++;
 			}
-			if (vo->sample_ptr > vo->sample_end) vo->sample_ptr = vo->sample_loop;
+			if (vo->sample_ptr > vo->sample_end)
+				vo->sample_ptr = vo->sample_loop;
 		}
 	}
 

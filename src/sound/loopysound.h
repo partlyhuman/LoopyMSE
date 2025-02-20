@@ -63,6 +63,12 @@ constexpr static int MIDI_QUEUE_CAPACITY = 2048;
 // For now it can be edited here but should be hardcoded.
 constexpr static int VOLUME_ENV_RATE_LIMIT = 0x1FF;
 
+// Loopy sound ROM LSI352 contains a bugged drum sample that underflows and clips at max value.
+// We can work around this by finding values that go from one extreme to the other and instead clipping them.
+constexpr static bool WORKAROUND_SAMPLE_WRAP = true;
+constexpr static int WORKAROUND_SAMPLE_WRAP_MIN = -0x760;
+constexpr static int WORKAROUND_SAMPLE_WRAP_MAX = 0x7FE;
+
 struct UPD937_VoiceState
 {
 	int channel, note;
@@ -72,7 +78,7 @@ struct UPD937_VoiceState
 	bool volume_down;
 	int volume_env, volume_env_step, volume_env_delay, volume_env_timer_phase;
 	int pitch_env, pitch_env_step, pitch_env_delay, pitch_env_value, pitch_env_rate, pitch_env_target;
-	int sample_start, sample_end, sample_loop, sample_ptr, sample_fract, sample_last_val;
+	int sample_start, sample_end, sample_loop, sample_ptr, sample_fract, sample_last_val, sample_current_val;
 	bool sample_new;
 };
 
