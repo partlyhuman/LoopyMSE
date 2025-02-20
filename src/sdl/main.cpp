@@ -67,6 +67,7 @@ void initialize()
 	screen.texture = SDL_CreateTexture(
 		screen.renderer, SDL_PIXELFORMAT_ARGB1555, SDL_TEXTUREACCESS_STREAMING, DISPLAY_WIDTH, DISPLAY_HEIGHT
 	);
+	SDL_SetTextureBlendMode(screen.texture, SDL_BLENDMODE_BLEND);
 
 	//Allow dropping a ROM onto the window
 	SDL_EventState(SDL_DROPFILE, SDL_ENABLE);

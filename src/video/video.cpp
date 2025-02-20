@@ -171,9 +171,19 @@ static void inc_vcount(uint64_t param, int cycles_late)
 
 	vdp.vcount++;
 
+	bool show_border_color = true;
+
 	//Once we go past the visible region, enter VSYNC
 	if (vdp.vcount == vdp.visible_scanlines)
 	{
+		//Now is a good time to draw the bottom border
+		if (!vdp.mode.extra_scanlines)
+		{
+			for (int y = 0; y < 8; y++)
+			{
+				Renderer::draw_border_scanline(vdp.visible_scanlines+y, show_border_color);
+			}
+		}
 		vsync_start();
 	}
 
@@ -183,6 +193,14 @@ static void inc_vcount(uint64_t param, int cycles_late)
 	{
 		Log::debug("[Video] VSYNC end");
 		vdp.vcount = 0;
+		//Now is a good time to draw the top border
+		if (!vdp.mode.extra_scanlines)
+		{
+			for (int y = 0; y < 8; y++)
+			{
+				Renderer::draw_border_scanline(y-8, show_border_color);
+			}
+		}
 	}
 
 	constexpr static int CYCLES_PER_FRAME = Timing::F_CPU / 60;

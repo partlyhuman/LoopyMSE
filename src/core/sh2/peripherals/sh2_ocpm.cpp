@@ -150,6 +150,8 @@ void io_write16(uint32_t addr, uint16_t value)
 
 	switch (addr)
 	{
+	case 0xFB8:
+		return;
 	default:
 		Log::debug("[OCPM] write16 %08X: %04X", addr, value);
 	}

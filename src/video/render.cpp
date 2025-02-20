@@ -43,7 +43,7 @@ static void write_screen(int index, int x, uint8_t value)
 	}
 }
 
-static void write_color(std::unique_ptr<uint16_t[]>& buffer, int x, int y, uint16_t value)
+static void write_color_raw(std::unique_ptr<uint16_t[]>& buffer, int x, int y, uint16_t value)
 {
 	x &= 0x1FF;
 
@@ -58,6 +58,11 @@ static void write_color(std::unique_ptr<uint16_t[]>& buffer, int x, int y, uint1
 	{
 		buffer[x + (y * DISPLAY_WIDTH)] = value;
 	}
+}
+
+static inline void write_color(std::unique_ptr<uint16_t[]>& buffer, int x, int y, uint16_t value)
+{
+	write_color_raw(buffer, x, y, value | 0x8000);
 }
 
 static void write_pal_color(std::unique_ptr<uint16_t[]>& buffer, int x, int y, uint8_t pal_index)
@@ -714,6 +719,17 @@ void draw_scanline(int y)
 	{
 		display_capture(y);
 		vdp.capture_enable = false;
+	}
+}
+
+void draw_border_scanline(int y, bool show_border_color)
+{
+	//Draw backdrop A to the whole scanline
+	//Note: y is relative to visible area!
+	uint16_t border_color = show_border_color ? (vdp.backdrops[0] | 0x8000) : 0;
+	for (int x = 0; x < DISPLAY_WIDTH; x++)
+	{
+		write_color_raw(vdp.display_output, x, y, border_color);
 	}
 }
 
