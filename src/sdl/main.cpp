@@ -55,10 +55,9 @@ void initialize()
 	SDL_SetHint(SDL_HINT_MAC_OPENGL_ASYNC_DISPATCH, "0");
 
 	//Set up SDL screen
-	screen.window = SDL_CreateWindow("Loopy My Seal Emulator",
-		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-		screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT,
-		SDL_WINDOW_RESIZABLE
+	screen.window = SDL_CreateWindow(
+		"Loopy My Seal Emulator", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen.int_scale * DISPLAY_WIDTH,
+		screen.int_scale * DISPLAY_HEIGHT, SDL_WINDOW_RESIZABLE
 	);
 	screen.renderer = SDL_CreateRenderer(screen.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 	SDL_SetWindowSize(screen.window, screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT);
@@ -265,13 +264,13 @@ int main(int argc, char** argv)
 	}
 	SDL::open_first_controller();
 
-	constexpr int framerate_target = 60; //TODO: get this from Video if it can be changed (e.g. for PAL mode)
+	constexpr int framerate_target = 60;  //TODO: get this from Video if it can be changed (e.g. for PAL mode)
 	constexpr int framerate_max_lag = 5;
 	int last_frame_ticks = SDL_GetPerformanceCounter();
 	while (!has_quit)
 	{
 		//Check how much time passed since we drew the last frame
-		int ticks_per_frame = SDL_GetPerformanceFrequency()/framerate_target;
+		int ticks_per_frame = SDL_GetPerformanceFrequency() / framerate_target;
 		int now_ticks = SDL_GetPerformanceCounter();
 		int ticks_since_last_frame = now_ticks - last_frame_ticks;
 
@@ -291,8 +290,8 @@ int main(int argc, char** argv)
 		if (draw_frames && !is_paused && config.cart.is_loaded())
 		{
 			while (draw_frames)
-		{
-			System::run();
+			{
+				System::run();
 				draw_frames--;
 			}
 			SDL::update(System::get_display_output());
