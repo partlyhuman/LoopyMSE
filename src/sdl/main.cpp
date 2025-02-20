@@ -46,7 +46,7 @@ void initialize()
 		exit(0);
 	}
 
-	//Try synchronizing drawing to VBLANK
+	//Try synchronizing window drawing to VBLANK
 	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 	//Nearest neighbour scaling
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
@@ -55,10 +55,12 @@ void initialize()
 	SDL_SetHint(SDL_HINT_MAC_OPENGL_ASYNC_DISPATCH, "0");
 
 	//Set up SDL screen
-	SDL_CreateWindowAndRenderer(
-		screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT, SDL_WINDOW_RESIZABLE, &screen.window, &screen.renderer
+	screen.window = SDL_CreateWindow("Loopy My Seal Emulator",
+		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+		screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT,
+		SDL_WINDOW_RESIZABLE
 	);
-	SDL_SetWindowTitle(screen.window, "Loopy My Seal Emulator");
+	screen.renderer = SDL_CreateRenderer(screen.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 	SDL_SetWindowSize(screen.window, screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT);
 	SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 	SDL_RenderSetIntegerScale(screen.renderer, SDL_TRUE);
