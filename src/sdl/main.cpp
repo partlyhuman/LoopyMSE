@@ -126,15 +126,6 @@ void toggle_fullscreen()
 	screen.fullscreen = !screen.fullscreen;
 }
 
-void set_vsync_enabled(bool enable)
-{
-	if (SDL_RenderSetVSync(screen.renderer, (int)enable) != 0)
-	{
-		Log::error("Error setting vsync state: %s", SDL_GetError());
-		return;
-	}
-}
-
 }  // namespace SDL
 
 std::string remove_extension(std::string file_path)
