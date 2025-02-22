@@ -1,5 +1,8 @@
 #pragma once
 #include <boost/program_options.hpp>
+#include <filesystem> 
+
+namespace fs = std::filesystem;
 
 namespace Options
 {
@@ -15,7 +18,7 @@ struct Args
 };
 
 void parse_commandline(int argc, char** argv, Args& args);
-bool parse_config(std::string config_path, Args& args);
+bool parse_config(fs::path config_path, Args& args);
 void print_usage();
 
 }  // namespace Options

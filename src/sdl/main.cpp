@@ -186,7 +186,7 @@ bool load_cart(Config::SystemInfo& config, std::string path)
 	return true;
 }
 
-bool load_bios(Config::SystemInfo& config, std::string path)
+bool load_bios(Config::SystemInfo& config, fs::path path)
 {
 	Log::debug("Looking for BIOS in %s", path.c_str());
 
@@ -202,7 +202,7 @@ bool load_bios(Config::SystemInfo& config, std::string path)
 	return true;
 }
 
-bool load_sound_bios(Config::SystemInfo& config, std::string path)
+bool load_sound_bios(Config::SystemInfo& config, fs::path path)
 {
 	Log::debug("Looking for Sound BIOS in %s", path.c_str());
 
@@ -304,8 +304,8 @@ int main(int argc, char** argv)
 		Log::error("Could not load ROM file.");
 		exit(1);
 	}
-
-	if (SDL_GameControllerAddMappingsFromFile((RESOURCE_PATH / CONTROLLER_DB_PATH).c_str()) < 0)
+	
+	if (SDL_GameControllerAddMappingsFromFile((RESOURCE_PATH / CONTROLLER_DB_PATH).string().c_str()) < 0)
 	{
 		Log::warn("Could not load game controller database: %s", SDL_GetError());
 		//Nonfatal: continue without the mappings

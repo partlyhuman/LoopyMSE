@@ -105,7 +105,7 @@ const std::unordered_map<std::string, Input::PadButton> CONTROLLER_CONFIG_KEY_TO
 	{"controller_pad_right", Input::PAD_RIGHT},
 };
 
-bool parse_config(std::string config_path, Args& args)
+bool parse_config(fs::path config_path, Args& args)
 {
 	// Probably not the correct place for this, but should always run, until configuration exists
 	input_add_default_controller_bindings();
@@ -157,7 +157,7 @@ bool parse_config(std::string config_path, Args& args)
 
 	try
 	{
-		po::store(po::parse_config_file(config_path.c_str(), options, true), vm);
+		po::store(po::parse_config_file(config_path.string().c_str(), options, true), vm);
 		po::notify(vm);
 
 		args.bios = vm["bios"].as<std::string>();
