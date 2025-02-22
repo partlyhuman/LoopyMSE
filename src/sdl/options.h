@@ -15,7 +15,7 @@ struct Args
 };
 
 void parse_commandline(int argc, char** argv, Args& args);
-void parse_config(std::string config_path, Args& args);
+bool parse_config(std::string config_path, Args& args);
 void print_usage();
 
 }  // namespace Options

@@ -13,9 +13,8 @@
 #include <fstream>
 #include <iostream>
 
+#include "config.h"
 #include "options.h"
-
-namespace fs = std::filesystem;
 
 namespace SDL
 {
@@ -186,10 +185,12 @@ bool load_cart(Config::SystemInfo& config, std::string path)
 
 bool load_bios(Config::SystemInfo& config, std::string path)
 {
+	Log::debug("Looking for BIOS in %s", path.c_str());
+
 	std::ifstream bios_file(path, std::ios::binary);
 	if (!bios_file.is_open())
 	{
-		// Log::error("Couldn't load BIOS at %s", path.c_str());
+		Log::debug("Couldn't load BIOS at %s", path.c_str());
 		return false;
 	}
 
@@ -200,10 +201,12 @@ bool load_bios(Config::SystemInfo& config, std::string path)
 
 bool load_sound_bios(Config::SystemInfo& config, std::string path)
 {
+	Log::debug("Looking for Sound BIOS in %s", path.c_str());
+
 	std::ifstream sound_rom_file(path, std::ios::binary);
 	if (!sound_rom_file.is_open())
 	{
-		// Log::error("Couldn't load Sound BIOS at %s", path.c_str());
+		Log::debug("Couldn't load Sound BIOS at %s", path.c_str());
 		return false;
 	}
 
@@ -212,21 +215,36 @@ bool load_sound_bios(Config::SystemInfo& config, std::string path)
 	return true;
 }
 
+std::vector<fs::path> search_paths(fs::path file_path, fs::path cart_path)
+{
+	std::vector<fs::path> vec;
+	if (file_path.is_relative())
+	{
+		if (!cart_path.empty() && cart_path.has_parent_path())
+		{
+			vec.push_back(cart_path.parent_path() / file_path);
+		}
+		vec.push_back(PREFS_PATH / file_path);
+		vec.push_back(RESOURCE_PATH / file_path);
+	}
+	vec.push_back(file_path);
+	return vec;
+}
+
 int main(int argc, char** argv)
 {
-	const std::string DEFAULT_BIOS_PATH = "bios.bin";
-	const std::string DEFAULT_SOUND_BIOS_PATH = "soundbios.bin";
-	const std::string CONTROLLER_DB_PATH = "gamecontrollerdb.txt";
-	const std::string INI_PATH = "loopymse.ini";
-	const std::string BASE_PATH = SDL_GetBasePath();
-
 	bool has_quit = false;
 	bool is_paused = false;
 
 	Config::SystemInfo config;
 	Options::Args args;
 
-	Options::parse_config(BASE_PATH + INI_PATH, args);
+	if (!fs::exists(PREFS_PATH / INI_PATH))
+	{
+		Log::info("Creating default ini file");
+		fs::copy_file(RESOURCE_PATH / INI_PATH, PREFS_PATH / INI_PATH);
+	}
+	Options::parse_config(PREFS_PATH / INI_PATH, args);
 	Options::parse_commandline(argc, argv, args);
 
 	Log::set_level(args.verbose ? Log::VERBOSE : Log::INFO);
@@ -234,14 +252,35 @@ int main(int argc, char** argv)
 	SDL::initialize();
 	SDL::set_background_color(0, 0, 0);
 
-	if (!load_bios(config, BASE_PATH + args.bios) && !load_bios(config, args.bios))
+	bool result = false;
+	for (const auto& path : search_paths(args.bios, args.cart))
 	{
-		Log::error("Error: Missing BIOS file. Provide by argument, or place in %s.\n", DEFAULT_BIOS_PATH.c_str());
+		if (load_bios(config, path))
+		{
+			result = true;
+			break;
+		}
+	}
+	if (!result)
+	{
+		Log::error(
+			"Error: Missing BIOS file. Provide by argument, or place in %s.\n", (PREFS_PATH / DEFAULT_BIOS_PATH).c_str()
+		);
 		Options::print_usage();
 		exit(1);
 	}
 
-	if (!load_sound_bios(config, BASE_PATH + args.sound_bios) && !load_sound_bios(config, args.sound_bios))
+	result = false;
+	for (const auto& path : search_paths(args.sound_bios, args.cart))
+	{
+		if (load_sound_bios(config, path))
+		{
+			result = true;
+			break;
+		}
+	}
+
+	if (!result)
 	{
 		Log::warn(
 			"Missing sound bios file. Provide by argument, or place in %s.\n"
@@ -264,7 +303,7 @@ int main(int argc, char** argv)
 		exit(1);
 	}
 
-	if (SDL_GameControllerAddMappingsFromFile((BASE_PATH + CONTROLLER_DB_PATH).c_str()) < 0)
+	if (SDL_GameControllerAddMappingsFromFile((RESOURCE_PATH / CONTROLLER_DB_PATH).c_str()) < 0)
 	{
 		Log::warn("Could not load game controller database: %s", SDL_GetError());
 		//Nonfatal: continue without the mappings
@@ -273,7 +312,7 @@ int main(int argc, char** argv)
 
 	constexpr int framerate_target = 60;  //TODO: get this from Video if it can be changed (e.g. for PAL mode)
 	constexpr int framerate_max_lag = 5;
-	int last_frame_ticks = SDL_GetPerformanceCounter();
+	int last_frame_ticks = INT_MAX;
 	while (!has_quit)
 	{
 		//Check how much time passed since we drew the last frame
@@ -289,14 +328,14 @@ int main(int argc, char** argv)
 		//If too far behind, draw one frame and start timing again from now
 		if (draw_frames > framerate_max_lag)
 		{
-			Log::warn("More than %d frames behind, skipping ahead...", framerate_max_lag);
+			Log::warn("%d frames behind, skipping ahead...", draw_frames);
 			last_frame_ticks = now_ticks;
 			draw_frames = 1;
 		}
 
 		if (draw_frames && !is_paused && config.cart.is_loaded())
 		{
-			while (draw_frames)
+			while (draw_frames > 0)
 			{
 				System::run();
 				draw_frames--;
@@ -342,6 +381,7 @@ int main(int argc, char** argv)
 						Log::info("Rebooting Loopy...");
 						System::shutdown();
 						System::initialize(config);
+						last_frame_ticks = INT_MAX;
 					}
 					break;
 				case SDL_SCANCODE_MINUS:
@@ -415,6 +455,7 @@ int main(int argc, char** argv)
 					System::initialize(config);
 					// So you can tell that MSE is running even before you click into it
 					is_paused = false;
+					last_frame_ticks = INT_MAX;
 				}
 				break;
 			}

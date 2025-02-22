@@ -67,7 +67,7 @@ const std::unordered_map<std::string, Input::PadButton> CONFIG_PAD_BUTTON = {
 	{"pad_right_scancode", Input::PAD_RIGHT},
 };
 
-void parse_config(std::string config_path, Args& args)
+bool parse_config(std::string config_path, Args& args)
 {
 	po::variables_map vm;
 	po::options_description key_options("Keys");
@@ -112,8 +112,9 @@ void parse_config(std::string config_path, Args& args)
 	// Changes failed parsing into defaults
 	if (!std::ifstream(config_path))
 	{
-		Log::info("Creating empty config in %s...", config_path.c_str());
+		Log::error("Config not found at %s...", config_path.c_str());
 		std::ofstream(config_path).close();
+		return false;
 	}
 
 	try
@@ -152,7 +153,10 @@ void parse_config(std::string config_path, Args& args)
 		Input::add_key_binding(SDL_SCANCODE_RIGHT, Input::PAD_RIGHT);
 		Input::add_key_binding(SDL_SCANCODE_UP, Input::PAD_UP);
 		Input::add_key_binding(SDL_SCANCODE_DOWN, Input::PAD_DOWN);
+		return false;
 	}
+
+	return true;
 }
 
 }  // namespace Options

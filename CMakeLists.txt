@@ -5,6 +5,10 @@ set (CMAKE_CXX_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_EXTENSIONS OFF)
 
 project (LoopyMSE LANGUAGES C CXX ASM)
+set (PROJECT_DESCRIPTION Loopy My Seal Emulator)
+set (PROJECT_HOMEPAGE_URL https://github.com/PSI-Rockin/LoopyMSE)
+set (PROJECT_VERSION 0.1.0)
+set (PROJECT_ORG PSI)
 
 string(REPLACE "/DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 
@@ -22,17 +26,19 @@ set (SDL_TEST OFF CACHE BOOL "" FORCE)
 find_package(SDL2 REQUIRED)
 include_directories(LoopyMSE PRIVATE ${SDL2_INCLUDE_DIRS})
 
+set (DIST_DIR "${CMAKE_BINARY_DIR}/dist")
+set (ASSETS_DIR "${PROJECT_SOURCE_DIR}/assets")
+
 add_subdirectory (src)
 # add_subdirectory (externals/SDL) # TODO remove submodule
 
-set (DIST_DIR "${CMAKE_BINARY_DIR}/dist")
-set (ASSETS_DIR "${CMAKE_INSTALL_NAME_DIR}/../assets")
-
 install (TARGETS LoopyMSE
 		RUNTIME DESTINATION ${DIST_DIR}
-		BUNDLE DESTINATION ${DIST_DIR}
-	)
+		BUNDLE DESTINATION ${DIST_DIR})
 
-install (DIRECTORY "assets/"
-		DESTINATION ${DIST_DIR}
-		FILES_MATCHING PATTERN "*")
+# These are copied into the .app Resources and not needed on Apple
+if (WIN32)
+	install (DIRECTORY ${ASSETS_DIR}
+			DESTINATION ${DIST_DIR}
+			FILES_MATCHING PATTERN "*")
+endif()
