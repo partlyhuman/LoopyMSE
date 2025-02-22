@@ -17,4 +17,10 @@ const fs::path DEFAULT_SOUND_BIOS_PATH = "soundbios.bin";
 const fs::path CONTROLLER_DB_PATH = "gamecontrollerdb.txt";
 const fs::path INI_PATH = "loopymse.ini";
 const fs::path RESOURCE_PATH = SDL_GetBasePath();
-const fs::path PREFS_PATH = SDL_GetPrefPath(PROJECT_ORG, PROJECT_NAME);
+const fs::path PREFS_PATH = 
+#ifdef _WIN32
+// Don't use %APPDATA% on windows, keep everything beside .exe
+SDL_GetBasePath();
+#else
+SDL_GetPrefPath(PROJECT_ORG, PROJECT_NAME);
+#endif
