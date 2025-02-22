@@ -40,7 +40,6 @@ void input_add_default_key_bindings()
 
 void input_add_default_controller_bindings()
 {
-	// Not yet in config - controller config
 	// Incredibly lazy hack to allow button enum to coexist with keycodes: use negatives
 	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_A, Input::PAD_A);
 	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_B, Input::PAD_B);
@@ -93,11 +92,21 @@ void parse_commandline(int argc, char** argv, Args& args)
 	args.verbose = vm.count("verbose");
 }
 
-const std::unordered_map<std::string, Input::PadButton> CONFIG_PAD_BUTTON = {
-	{"pad_start", Input::PAD_START}, {"pad_l1", Input::PAD_L1},		  {"pad_r1", Input::PAD_R1},
-	{"pad_a", Input::PAD_A},		 {"pad_d", Input::PAD_D},		  {"pad_c", Input::PAD_C},
-	{"pad_b", Input::PAD_B},		 {"pad_up", Input::PAD_UP},		  {"pad_down", Input::PAD_DOWN},
-	{"pad_left", Input::PAD_LEFT},	 {"pad_right", Input::PAD_RIGHT},
+const std::unordered_map<std::string, Input::PadButton> KEYBOARD_CONFIG_KEY_TO_PAD_ENUM = {
+	{"keyboard_pad_start", Input::PAD_START}, {"keyboard_pad_l1", Input::PAD_L1},
+	{"keyboard_pad_r1", Input::PAD_R1},		  {"keyboard_pad_a", Input::PAD_A},
+	{"keyboard_pad_d", Input::PAD_D},		  {"keyboard_pad_c", Input::PAD_C},
+	{"keyboard_pad_b", Input::PAD_B},		  {"keyboard_pad_up", Input::PAD_UP},
+	{"keyboard_pad_down", Input::PAD_DOWN},	  {"keyboard_pad_left", Input::PAD_LEFT},
+	{"keyboard_pad_right", Input::PAD_RIGHT},
+};
+const std::unordered_map<std::string, Input::PadButton> CONTROLLER_CONFIG_KEY_TO_PAD_ENUM = {
+	{"controller_pad_start", Input::PAD_START}, {"controller_pad_l1", Input::PAD_L1},
+	{"controller_pad_r1", Input::PAD_R1},		{"controller_pad_a", Input::PAD_A},
+	{"controller_pad_d", Input::PAD_D},			{"controller_pad_c", Input::PAD_C},
+	{"controller_pad_b", Input::PAD_B},			{"controller_pad_up", Input::PAD_UP},
+	{"controller_pad_down", Input::PAD_DOWN},	{"controller_pad_left", Input::PAD_LEFT},
+	{"controller_pad_right", Input::PAD_RIGHT},
 };
 
 bool parse_config(std::string config_path, Args& args)
@@ -106,19 +115,33 @@ bool parse_config(std::string config_path, Args& args)
 	input_add_default_controller_bindings();
 
 	po::variables_map vm;
-	po::options_description key_options("Keys");
+	po::options_description key_options("Keyboard Map");
 	key_options.add_options()
-		("pad_start", po::value<std::string>()->default_value("RETURN"), "Start")
-		("pad_l1", po::value<std::string>()->default_value("Q"), "L1")
-		("pad_r1", po::value<std::string>()->default_value("W"), "R1")
-		("pad_a", po::value<std::string>()->default_value("Z"), "A button")
-		("pad_b", po::value<std::string>()->default_value("X"), "B button")
-		("pad_c", po::value<std::string>()->default_value("A"), "C button")
-		("pad_d", po::value<std::string>()->default_value("S"), "D button")
-		("pad_up", po::value<std::string>()->default_value("UP"), "D-pad up") 
-		("pad_down", po::value<std::string>()->default_value("DOWN"), "D-pad down")
-		("pad_left", po::value<std::string>()->default_value("LEFT"), "D-pad left")
-		("pad_right", po::value<std::string>()->default_value("RIGHT"), "D-pad right");
+		("keyboard_pad_start", po::value<std::string>()->default_value("return"), "Start")
+		("keyboard_pad_l1", po::value<std::string>()->default_value("q"), "L1")
+		("keyboard_pad_r1", po::value<std::string>()->default_value("w"), "R1")
+		("keyboard_pad_a", po::value<std::string>()->default_value("z"), "A button")
+		("keyboard_pad_b", po::value<std::string>()->default_value("x"), "B button")
+		("keyboard_pad_c", po::value<std::string>()->default_value("a"), "C button")
+		("keyboard_pad_d", po::value<std::string>()->default_value("s"), "D button")
+		("keyboard_pad_up", po::value<std::string>()->default_value("up"), "D-pad up") 
+		("keyboard_pad_down", po::value<std::string>()->default_value("down"), "D-pad down")
+		("keyboard_pad_left", po::value<std::string>()->default_value("left"), "D-pad left")
+		("keyboard_pad_right", po::value<std::string>()->default_value("right"), "D-pad right");
+
+	po::options_description button_options("Controller Map");
+	button_options.add_options()
+		("controller_pad_start", po::value<std::string>()->default_value("start"), "Controller Start")
+		("controller_pad_l1", po::value<std::string>()->default_value("leftshoulder"), "Controller L1")
+		("controller_pad_r1", po::value<std::string>()->default_value("rightshoulder"), "Controller R1")
+		("controller_pad_a", po::value<std::string>()->default_value("a"), "Controller A button")
+		("controller_pad_b", po::value<std::string>()->default_value("b"), "Controller B button")
+		("controller_pad_c", po::value<std::string>()->default_value("y"), "Controller C button")
+		("controller_pad_d", po::value<std::string>()->default_value("x"), "Controller D button")
+		("controller_pad_up", po::value<std::string>()->default_value("dpup"), "Controller D-pad up") 
+		("controller_pad_down", po::value<std::string>()->default_value("dpdown"), "Controller D-pad down")
+		("controller_pad_left", po::value<std::string>()->default_value("dpleft"), "Controller D-pad left")
+		("controller_pad_right", po::value<std::string>()->default_value("dpright"), "Controller D-pad right");
 
 	po::options_description emu_options("Emulation");
 	emu_options.add_options()
@@ -128,7 +151,7 @@ bool parse_config(std::string config_path, Args& args)
 		("int_scale", po::value<int>()->default_value(3), "Integer scale");
 
 	po::options_description options;
-	options.add(key_options).add(emu_options);
+	options.add(key_options).add(button_options).add(emu_options);
 
 	if (!std::ifstream(config_path))
 	{
@@ -147,7 +170,7 @@ bool parse_config(std::string config_path, Args& args)
 		args.int_scale = vm["int_scale"].as<int>();
 
 		// Keymap
-		for (const auto& [cfg_key, pad_key] : CONFIG_PAD_BUTTON)
+		for (const auto& [cfg_key, pad_key] : KEYBOARD_CONFIG_KEY_TO_PAD_ENUM)
 		{
 			if (!vm.count(cfg_key))
 			{
@@ -156,6 +179,7 @@ bool parse_config(std::string config_path, Args& args)
 			}
 			std::string key_string = vm[cfg_key].as<std::string>();
 			SDL_Keycode keycode = SDL_GetKeyFromName(key_string.c_str());
+
 			if (keycode == SDLK_UNKNOWN)
 			{
 				Log::error("Could not parse key '%s' defined by %s", key_string.c_str(), cfg_key.c_str());
@@ -165,11 +189,38 @@ bool parse_config(std::string config_path, Args& args)
 				Input::add_key_binding(keycode, pad_key);
 			}
 		}
+
+		// Controller map
+		for (const auto& [cfg_key, pad_key] : CONTROLLER_CONFIG_KEY_TO_PAD_ENUM)
+		{
+			if (!vm.count(cfg_key))
+			{
+				Log::warn("Loopy %s <- [No controller button set]", cfg_key.c_str());
+				continue;
+			}
+			std::string button_string = vm[cfg_key].as<std::string>();
+			SDL_GameControllerButton button = SDL_GameControllerGetButtonFromString(button_string.c_str());
+
+			// TODO handle axes for analog stick input
+
+			if ((int)button == (int)SDL_CONTROLLER_AXIS_INVALID)
+			{
+				Log::error(
+					"Could not parse game controller button '%s' defined by %s", button_string.c_str(), cfg_key.c_str()
+				);
+			}
+			else
+			{
+				// TODO formalize controller bindings and don't use negative hack
+				Input::add_key_binding(-button, pad_key);
+			}
+		}
 	}
 	catch (po::error& e)
 	{
 		Log::warn("No config file found at %s, or could not parse config file.", config_path.c_str());
 		input_add_default_key_bindings();
+		input_add_default_controller_bindings();
 		return false;
 	}
 
