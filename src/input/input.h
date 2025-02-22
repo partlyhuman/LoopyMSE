@@ -25,7 +25,9 @@ void initialize();
 void shutdown();
 
 void set_key_state(int key, bool pressed);
+void set_controller_state(int key, bool pressed);
 
 void add_key_binding(int key, PadButton pad_button);
+void add_controller_binding(int key, PadButton pad_button);
 
 }

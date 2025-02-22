@@ -22,16 +22,13 @@ void print_usage()
 
 void input_add_default_key_bindings()
 {
-	// Ensure there are SOME key configs
 	Input::add_key_binding(SDLK_RETURN, Input::PAD_START);
-
 	Input::add_key_binding(SDLK_z, Input::PAD_A);
 	Input::add_key_binding(SDLK_x, Input::PAD_B);
 	Input::add_key_binding(SDLK_a, Input::PAD_C);
 	Input::add_key_binding(SDLK_s, Input::PAD_D);
 	Input::add_key_binding(SDLK_q, Input::PAD_L1);
 	Input::add_key_binding(SDLK_w, Input::PAD_R1);
-
 	Input::add_key_binding(SDLK_LEFT, Input::PAD_LEFT);
 	Input::add_key_binding(SDLK_RIGHT, Input::PAD_RIGHT);
 	Input::add_key_binding(SDLK_UP, Input::PAD_UP);
@@ -40,18 +37,17 @@ void input_add_default_key_bindings()
 
 void input_add_default_controller_bindings()
 {
-	// Incredibly lazy hack to allow button enum to coexist with keycodes: use negatives
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_A, Input::PAD_A);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_B, Input::PAD_B);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_Y, Input::PAD_C);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_X, Input::PAD_D);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_LEFTSHOULDER, Input::PAD_L1);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, Input::PAD_R1);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_LEFT, Input::PAD_LEFT);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_RIGHT, Input::PAD_RIGHT);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_UP, Input::PAD_UP);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_DPAD_DOWN, Input::PAD_DOWN);
-	Input::add_key_binding(-SDL_CONTROLLER_BUTTON_START, Input::PAD_START);
+	Input::add_controller_binding(SDL_CONTROLLER_BUTTON_A, Input::PAD_A);
+	Input::add_controller_binding(SDL_CONTROLLER_BUTTON_B, Input::PAD_B);
+	Input::add_controller_binding(SDL_CONTROLLER_BUTTON_Y, Input::PAD_C);
+	Input::add_controller_binding(SDL_CONTROLLER_BUTTON_X, Input::PAD_D);
+	Input::add_controller_binding(SDL_CONTROLLER_BUTTON_LEFTSHOULDER, Input::PAD_L1);
+	Input::add_controller_binding(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, Input::PAD_R1);
+	Input::add_controller_binding(SDL_CONTROLLER_BUTTON_DPAD_LEFT, Input::PAD_LEFT);
+	Input::add_controller_binding(SDL_CONTROLLER_BUTTON_DPAD_RIGHT, Input::PAD_RIGHT);
+	Input::add_controller_binding(SDL_CONTROLLER_BUTTON_DPAD_UP, Input::PAD_UP);
+	Input::add_controller_binding(SDL_CONTROLLER_BUTTON_DPAD_DOWN, Input::PAD_DOWN);
+	Input::add_controller_binding(SDL_CONTROLLER_BUTTON_START, Input::PAD_START);
 }
 
 void parse_commandline(int argc, char** argv, Args& args)
@@ -211,8 +207,7 @@ bool parse_config(std::string config_path, Args& args)
 			}
 			else
 			{
-				// TODO formalize controller bindings and don't use negative hack
-				Input::add_key_binding(-button, pad_key);
+				Input::add_controller_binding(button, pad_key);
 			}
 		}
 	}

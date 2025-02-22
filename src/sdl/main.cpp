@@ -350,9 +350,6 @@ int main(int argc, char** argv)
 			case SDL_QUIT:
 				has_quit = true;
 				break;
-			case SDL_CONTROLLERBUTTONDOWN:
-				Input::set_key_state(-e.cbutton.button, true);
-				break;
 			case SDL_KEYDOWN:
 				Input::set_key_state(e.key.keysym.sym, true);
 				break;
@@ -405,8 +402,11 @@ int main(int argc, char** argv)
 				}
 				break;
 			}
+			case SDL_CONTROLLERBUTTONDOWN:
+				Input::set_controller_state(e.cbutton.button, true);
+				break;
 			case SDL_CONTROLLERBUTTONUP:
-				Input::set_key_state(-e.cbutton.button, false);
+				Input::set_controller_state(e.cbutton.button, false);
 				break;
 			case SDL_WINDOWEVENT:
 				switch (e.window.event)
