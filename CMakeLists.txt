@@ -37,7 +37,7 @@ install (TARGETS LoopyMSE
 
 # These are copied into the .app Resources and not needed on Apple
 if (WIN32)
-	install (DIRECTORY ${ASSETS_DIR}
-			DESTINATION ${DIST_DIR}
-			FILES_MATCHING PATTERN "*")
+install (DIRECTORY ${ASSETS_DIR}/
+		DESTINATION ${DIST_DIR}
+		FILES_MATCHING PATTERN "*")
 endif()

@@ -247,6 +247,11 @@ int main(int argc, char** argv)
 		Log::info("Creating default ini file");
 		fs::copy_file(RESOURCE_PATH / INI_PATH, PREFS_PATH / INI_PATH);
 	}
+	if (fs::exists(RESOURCE_PATH / INI_PATH))
+	{
+		// On Windows, it's confusing if we leave a copy here
+		fs::remove(RESOURCE_PATH / INI_PATH);
+	}
 	Options::parse_config(PREFS_PATH / INI_PATH, args);
 	Options::parse_commandline(argc, argv, args);
 
