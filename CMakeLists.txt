@@ -30,7 +30,6 @@ set (DIST_DIR "${CMAKE_BINARY_DIR}/dist")
 set (ASSETS_DIR "${PROJECT_SOURCE_DIR}/assets")
 
 add_subdirectory (src)
-# add_subdirectory (externals/SDL) # TODO remove submodule
 
 install (TARGETS LoopyMSE
 		RUNTIME DESTINATION ${DIST_DIR}
