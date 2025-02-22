@@ -1,4 +1,4 @@
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <common/bswp.h>
 #include <core/config.h>
 #include <core/system.h>
@@ -279,7 +279,6 @@ int main(int argc, char** argv)
 			break;
 		}
 	}
-
 	if (!result)
 	{
 		Log::warn(
@@ -355,27 +354,27 @@ int main(int argc, char** argv)
 				Input::set_key_state(-e.cbutton.button, true);
 				break;
 			case SDL_KEYDOWN:
-				Input::set_key_state(e.key.keysym.scancode, true);
+				Input::set_key_state(e.key.keysym.sym, true);
 				break;
 			case SDL_KEYUP:
 			{
-				SDL_Scancode scancode = e.key.keysym.scancode;
-				switch (scancode)
+				SDL_Keycode keycode = e.key.keysym.sym;
+				switch (keycode)
 				{
-				case SDL_SCANCODE_F10:
+				case SDLK_F10:
 					if (config.cart.is_loaded())
 					{
 						Log::info("Dumping frame...");
 						Video::dump_current_frame();
 					}
 					break;
-				case SDL_SCANCODE_F11:
+				case SDLK_F11:
 					if (config.cart.is_loaded())
 					{
 						SDL::toggle_fullscreen();
 					}
 					break;
-				case SDL_SCANCODE_F12:
+				case SDLK_F12:
 					if (config.cart.is_loaded())
 					{
 						Log::info("Rebooting Loopy...");
@@ -384,13 +383,13 @@ int main(int argc, char** argv)
 						last_frame_ticks = INT_MAX;
 					}
 					break;
-				case SDL_SCANCODE_MINUS:
+				case SDLK_MINUS:
 					SDL::change_int_scale(-1);
 					break;
-				case SDL_SCANCODE_EQUALS:
+				case SDLK_EQUALS:
 					SDL::change_int_scale(1);
 					break;
-				case SDL_SCANCODE_ESCAPE:
+				case SDLK_ESCAPE:
 					if (SDL::screen.fullscreen)
 					{
 						SDL::toggle_fullscreen();
@@ -401,7 +400,7 @@ int main(int argc, char** argv)
 					}
 					break;
 				default:
-					Input::set_key_state(scancode, false);
+					Input::set_key_state(keycode, false);
 					break;
 				}
 				break;
