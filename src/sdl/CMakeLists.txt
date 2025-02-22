@@ -7,6 +7,7 @@ add_executable (LoopyMSE
 target_compile_definitions(LoopyMSE PRIVATE 
 	PROJECT_NAME="${PROJECT_NAME}"
 	PROJECT_ORG="${PROJECT_ORG}"
+	PROJECT_DESCRIPTION="${PROJECT_DESCRIPTION}"
 	PROJECT_VERSION="${PROJECT_VERSION}"
 )
 
@@ -20,7 +21,7 @@ if (APPLE)
 
 	set(BUNDLE_RESOURCES_DIR "LoopyMSE.app/Contents/Resources")
 	set(ICON_NAME "macos.icns")
-	set(ICON_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${ICON_NAME}")
+	set(ICON_PATH ${CMAKE_CURRENT_SOURCE_DIR}/${ICON_NAME})
 	set_source_files_properties(${ICON_PATH} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 	file(COPY ${ICON_PATH} DESTINATION ${BUNDLE_RESOURCES_DIR})
 	
@@ -29,7 +30,7 @@ if (APPLE)
 
 	set_target_properties(LoopyMSE PROPERTIES MACOSX_BUNDLE ON)
 	set_target_properties(LoopyMSE PROPERTIES MACOSX_BUNDLE_ICONFILE ${ICON_NAME})
-	set_target_properties(LoopyMSE PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist")
+	set_target_properties(LoopyMSE PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist)
 endif()
 
 target_link_libraries (LoopyMSE PRIVATE core SDL2::SDL2-static Boost::program_options)

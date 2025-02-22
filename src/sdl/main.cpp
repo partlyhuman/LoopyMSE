@@ -53,9 +53,12 @@ void initialize()
 	//Helps stuttering after app backgrounded/foregrounded on MacOS
 	SDL_SetHint(SDL_HINT_MAC_OPENGL_ASYNC_DISPATCH, "0");
 
+	char title[64];
+	snprintf(title, sizeof(title), "%s %s", PROJECT_DESCRIPTION, PROJECT_VERSION);
+
 	//Set up SDL screen
 	screen.window = SDL_CreateWindow(
-		"Loopy My Seal Emulator", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen.int_scale * DISPLAY_WIDTH,
+		title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen.int_scale * DISPLAY_WIDTH,
 		screen.int_scale * DISPLAY_HEIGHT, SDL_WINDOW_RESIZABLE
 	);
 	screen.renderer = SDL_CreateRenderer(screen.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);

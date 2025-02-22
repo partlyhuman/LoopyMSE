@@ -8,6 +8,7 @@
 #define PROJECT_NAME ""
 #define PROJECT_VERSION ""
 #define PROJECT_ORG ""
+#define PROJECT_DESCRIPTION ""
 #endif
 
 namespace fs = std::filesystem;
