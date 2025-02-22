@@ -1,4 +1,4 @@
-﻿cmake_minimum_required (VERSION 3.8)
+﻿cmake_minimum_required (VERSION 3.12)
 
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,14 +30,3 @@ set (DIST_DIR ${CMAKE_BINARY_DIR}/dist)
 set (ASSETS_DIR ${PROJECT_SOURCE_DIR}/assets)
 
 add_subdirectory (src)
-
-install (TARGETS LoopyMSE
-		RUNTIME DESTINATION ${DIST_DIR}
-		BUNDLE DESTINATION ${DIST_DIR})
-
-# These are copied into the .app Resources and not needed on Apple
-if (WIN32)
-install (DIRECTORY ${ASSETS_DIR}/
-		DESTINATION ${DIST_DIR}
-		FILES_MATCHING PATTERN "*")
-endif()

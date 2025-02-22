@@ -34,3 +34,17 @@ if (APPLE)
 endif()
 
 target_link_libraries (LoopyMSE PRIVATE core SDL2::SDL2-static Boost::program_options)
+
+# INSTALLATION
+
+install (TARGETS LoopyMSE
+		RUNTIME DESTINATION ${DIST_DIR}
+		BUNDLE DESTINATION ${DIST_DIR})
+
+if (WIN32)
+install (DIRECTORY ${ASSETS_DIR}/
+		DESTINATION ${DIST_DIR}
+		FILES_MATCHING PATTERN "*")
+install (CODE "file(TOUCH \"${DIST_DIR}/__PLACE_BIOS.BIN_HERE__\")")
+install (CODE "file(TOUCH \"${DIST_DIR}/__PLACE_SOUNDBIOS.BIN_HERE__\")")
+endif()

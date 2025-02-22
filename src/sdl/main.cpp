@@ -269,6 +269,7 @@ int main(int argc, char** argv)
 		Log::error(
 			"Error: Missing BIOS file. Provide by argument, or place in %s.\n", (PREFS_PATH / DEFAULT_BIOS_PATH).c_str()
 		);
+		
 		Options::print_usage();
 		exit(1);
 	}
