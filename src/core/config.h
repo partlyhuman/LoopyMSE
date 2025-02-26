@@ -11,6 +11,7 @@ struct CartInfo
 	std::vector<uint8_t> rom;
 	std::vector<uint8_t> sram;
 	std::string sram_file_path;
+	std::string rom_path;
 
 	bool is_loaded()
 	{

@@ -157,6 +157,7 @@ bool load_cart(Config::SystemInfo& config, std::string path)
 		return false;
 	}
 
+	config.cart.rom_path = path;
 	config.cart.rom.assign(std::istreambuf_iterator<char>(cart_file), {});
 	cart_file.close();
 
@@ -269,7 +270,7 @@ int main(int argc, char** argv)
 		Log::error(
 			"Error: Missing BIOS file. Provide by argument, or place in %s.\n", (PREFS_PATH / DEFAULT_BIOS_PATH).c_str()
 		);
-		
+
 		Options::print_usage();
 		exit(1);
 	}
@@ -305,7 +306,7 @@ int main(int argc, char** argv)
 		Log::error("Could not load ROM file.");
 		exit(1);
 	}
-	
+
 	if (SDL_GameControllerAddMappingsFromFile((RESOURCE_PATH / CONTROLLER_DB_PATH).string().c_str()) < 0)
 	{
 		Log::warn("Could not load game controller database: %s", SDL_GetError());
@@ -365,8 +366,19 @@ int main(int argc, char** argv)
 				case SDLK_F10:
 					if (config.cart.is_loaded())
 					{
+						fs::path screencap_filename("loopy.bmp");
+						fs::path screencap_path(config.cart.rom_path);
+						if (screencap_path.has_parent_path())
+						{
+							screencap_path = screencap_path.parent_path() / screencap_filename;
+						}
+						else
+						{
+							screencap_path = PREFS_PATH / screencap_filename;
+						}
+						std::cout << screencap_path << "\n";
 						Log::info("Dumping frame...");
-						Video::dump_current_frame();
+						Video::dump_current_frame(screencap_path.string());
 					}
 					break;
 				case SDLK_F11:

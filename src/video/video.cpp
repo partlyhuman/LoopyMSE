@@ -33,7 +33,7 @@ struct DumpHeader
 
 static void dump_bmp(std::string name, std::unique_ptr<uint16_t[]>& data)
 {
-	std::ofstream bmp_file(name + ".bmp", std::ios::binary);
+	std::ofstream bmp_file(name, std::ios::binary);
 
 	const char* SIGNATURE = "BM";
 	bmp_file.write(SIGNATURE, 2);
@@ -81,7 +81,7 @@ static void dump_all_bmps()
 	{
 		char num = '0' + i;
 
-		std::string bitmap_name = "output_bitmap";
+		std::string bitmap_name = "output_bitmap.bmp";
 		dump_bmp(bitmap_name + num, vdp.bitmap_output[i]);
 	}
 
@@ -89,18 +89,19 @@ static void dump_all_bmps()
 	{
 		char num = '0' + i;
 
-		std::string bg_name = "output_bg";
+		std::string bg_name = "output_bg.bmp";
 		dump_bmp(bg_name + num, vdp.bg_output[i]);
 
 		std::string screen_name = "output_screen_";
 		screen_name += (i == 1) ? 'B' : 'A';
+		screen_name += ".bmp";
 		dump_bmp(screen_name, vdp.screen_output[i]);
 
-		std::string obj_name = "output_obj";
+		std::string obj_name = "output_obj.bmp";
 		dump_bmp(obj_name + num, vdp.obj_output[i]);
 	}
 
-	dump_bmp("output_display", vdp.display_output);
+	dump_bmp("output_display.bmp", vdp.display_output);
 }
 
 static void start_hsync(uint64_t param, int cycles_late)
@@ -181,7 +182,7 @@ static void inc_vcount(uint64_t param, int cycles_late)
 		{
 			for (int y = 0; y < 8; y++)
 			{
-				Renderer::draw_border_scanline(vdp.visible_scanlines+y, show_border_color);
+				Renderer::draw_border_scanline(vdp.visible_scanlines + y, show_border_color);
 			}
 		}
 		vsync_start();
@@ -198,7 +199,7 @@ static void inc_vcount(uint64_t param, int cycles_late)
 		{
 			for (int y = 0; y < 8; y++)
 			{
-				Renderer::draw_border_scanline(y-8, show_border_color);
+				Renderer::draw_border_scanline(y - 8, show_border_color);
 			}
 		}
 	}
@@ -299,10 +300,10 @@ uint16_t* get_display_output()
 	return vdp.display_output.get();
 }
 
-void dump_current_frame()
+void dump_current_frame(std::string bmp_path)
 {
 	// Do we need to wait for vsync? This happens on input processing loop
-	dump_bmp("output_display", vdp.display_output);
+	dump_bmp(bmp_path, vdp.display_output);
 }
 
 void dump_for_serial()

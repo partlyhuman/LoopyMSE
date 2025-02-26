@@ -60,7 +60,7 @@ bool check_frame_end();
 
 uint16_t* get_display_output();
 
-void dump_current_frame();
+void dump_current_frame(std::string path);
 void dump_for_serial();
 
 //TODO: should these MMIO accessors be moved to a different file?
