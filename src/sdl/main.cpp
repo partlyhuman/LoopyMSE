@@ -389,10 +389,7 @@ int main(int argc, char** argv)
 					}
 					break;
 				case SDLK_F11:
-					if (config.cart.is_loaded())
-					{
-						SDL::toggle_fullscreen();
-					}
+					SDL::toggle_fullscreen();
 					break;
 				case SDLK_F12:
 					if (config.cart.is_loaded())
@@ -452,7 +449,7 @@ int main(int argc, char** argv)
 				break;
 			case SDL_MOUSEBUTTONUP:
 				// Double-click to toggle fullscreen
-				if (e.button.clicks >= 2 && config.cart.is_loaded())
+				if (e.button.clicks >= 2)
 				{
 					SDL::toggle_fullscreen();
 				}
