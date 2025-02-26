@@ -423,6 +423,13 @@ int main(int argc, char** argv)
 				break;
 			}
 			case SDL_CONTROLLERBUTTONDOWN:
+				// Quit on select+start
+				if (SDL::controller && e.cbutton.button == SDL_CONTROLLER_BUTTON_BACK &&
+					SDL_GameControllerGetButton(SDL::controller, SDL_CONTROLLER_BUTTON_START))
+				{
+					has_quit = true;
+					break;
+				}
 				Input::set_controller_state(e.cbutton.button, true);
 				break;
 			case SDL_CONTROLLERBUTTONUP:
