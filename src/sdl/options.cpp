@@ -144,6 +144,7 @@ bool parse_config(fs::path config_path, Args& args)
 		("bios", po::value<std::string>()->default_value("bios.bin"), "BIOS file")
 		("sound_bios", po::value<std::string>()->default_value("soundbios.bin"), "Sound BIOS file")
 		("run_in_background", po::value<bool>()->default_value(false), "Continue emulation while window not focused")
+		("start_in_fullscreen", po::value<bool>()->default_value(false), "Default to fullscreen mode")
 		("int_scale", po::value<int>()->default_value(3), "Integer scale");
 
 	po::options_description options;
@@ -163,6 +164,7 @@ bool parse_config(fs::path config_path, Args& args)
 		args.bios = vm["bios"].as<std::string>();
 		args.sound_bios = vm["sound_bios"].as<std::string>();
 		args.run_in_background = vm["run_in_background"].as<bool>();
+		args.start_in_fullscreen = vm["start_in_fullscreen"].as<bool>();
 		args.int_scale = vm["int_scale"].as<int>();
 
 		// Keymap

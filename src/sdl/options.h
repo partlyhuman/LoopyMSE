@@ -1,6 +1,6 @@
 #pragma once
 #include <boost/program_options.hpp>
-#include <filesystem> 
+#include <filesystem>
 
 namespace fs = std::filesystem;
 
@@ -13,6 +13,7 @@ struct Args
 	std::string bios;
 	std::string sound_bios;
 	bool run_in_background;
+	bool start_in_fullscreen;
 	bool verbose;
 	int int_scale = 2;
 };

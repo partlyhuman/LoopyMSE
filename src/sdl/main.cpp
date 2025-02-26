@@ -27,53 +27,16 @@ struct Screen
 	SDL_Renderer* renderer;
 	SDL_Window* window;
 	SDL_Texture* texture;
-	bool fullscreen;
 	int int_scale;
+
+	bool is_fullscreen()
+	{
+		return (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN_DESKTOP) > 0;
+	}
 };
 
 static Screen screen;
 static SDL_GameController* controller;
-
-void initialize()
-{
-	//Allow use of our own main()
-	SDL_SetMainReady();
-
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0)
-	{
-		Log::error("Failed to initialize SDL2: %s", SDL_GetError());
-		exit(0);
-	}
-
-	//Try synchronizing window drawing to VBLANK
-	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
-	//Nearest neighbour scaling
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
-	SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "1");
-	//Helps stuttering after app backgrounded/foregrounded on MacOS
-	SDL_SetHint(SDL_HINT_MAC_OPENGL_ASYNC_DISPATCH, "0");
-
-	char title[64];
-	snprintf(title, sizeof(title), "%s %s", PROJECT_DESCRIPTION, PROJECT_VERSION);
-
-	//Set up SDL screen
-	screen.window = SDL_CreateWindow(
-		title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen.int_scale * DISPLAY_WIDTH,
-		screen.int_scale * DISPLAY_HEIGHT, SDL_WINDOW_RESIZABLE
-	);
-	screen.renderer = SDL_CreateRenderer(screen.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-	SDL_SetWindowSize(screen.window, screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT);
-	SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
-	SDL_RenderSetIntegerScale(screen.renderer, SDL_TRUE);
-
-	screen.texture = SDL_CreateTexture(
-		screen.renderer, SDL_PIXELFORMAT_ARGB1555, SDL_TEXTUREACCESS_STREAMING, DISPLAY_WIDTH, DISPLAY_HEIGHT
-	);
-	SDL_SetTextureBlendMode(screen.texture, SDL_BLENDMODE_BLEND);
-
-	//Allow dropping a ROM onto the window
-	SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
-}
 
 void shutdown()
 {
@@ -111,7 +74,7 @@ void open_first_controller()
 
 void change_int_scale(int delta_int_scale)
 {
-	if (!screen.fullscreen)
+	if (!screen.is_fullscreen())
 	{
 		screen.int_scale = std::clamp(screen.int_scale + delta_int_scale, 1, 8);
 		SDL_SetWindowSize(screen.window, screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT);
@@ -120,17 +83,67 @@ void change_int_scale(int delta_int_scale)
 
 void toggle_fullscreen()
 {
-	if (SDL_SetWindowFullscreen(screen.window, screen.fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
+	if (SDL_SetWindowFullscreen(screen.window, screen.is_fullscreen() ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
 	{
 		Log::error("Error fullscreening: %s", SDL_GetError());
 		return;
 	}
-	screen.fullscreen = !screen.fullscreen;
 }
 
 void set_background_color(uint8_t r, uint8_t g, uint8_t b)
 {
 	SDL_SetRenderDrawColor(screen.renderer, r, g, b, 255);
+}
+
+void initialize(Options::Args& args)
+{
+	//Allow use of our own main()
+	SDL_SetMainReady();
+
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0)
+	{
+		Log::error("Failed to initialize SDL2: %s", SDL_GetError());
+		exit(0);
+	}
+
+	//Try synchronizing window drawing to VBLANK
+	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
+	//Nearest neighbour scaling
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+	SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "1");
+	//Helps stuttering after app backgrounded/foregrounded on MacOS?
+	SDL_SetHint(SDL_HINT_MAC_OPENGL_ASYNC_DISPATCH, "0");
+
+	//Set up SDL screen
+	char title[64];
+	snprintf(title, sizeof(title), "%s %s", PROJECT_DESCRIPTION, PROJECT_VERSION);
+	screen.int_scale = std::clamp(args.int_scale, 1, 8);
+	Uint32 create_window_flags = SDL_WINDOW_RESIZABLE | (args.start_in_fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+	screen.window = SDL_CreateWindow(
+		title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen.int_scale * DISPLAY_WIDTH,
+		screen.int_scale * DISPLAY_HEIGHT, create_window_flags
+	);
+
+	screen.renderer = SDL_CreateRenderer(screen.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	SDL_SetWindowSize(screen.window, screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT);
+	SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+	SDL_RenderSetIntegerScale(screen.renderer, SDL_TRUE);
+
+	screen.texture = SDL_CreateTexture(
+		screen.renderer, SDL_PIXELFORMAT_ARGB1555, SDL_TEXTUREACCESS_STREAMING, DISPLAY_WIDTH, DISPLAY_HEIGHT
+	);
+	SDL_SetTextureBlendMode(screen.texture, SDL_BLENDMODE_BLEND);
+
+	//Allow dropping a ROM onto the window
+	SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
+
+	if (SDL_GameControllerAddMappingsFromFile((RESOURCE_PATH / CONTROLLER_DB_PATH).string().c_str()) < 0)
+	{
+		Log::warn("Could not load game controller database: %s", SDL_GetError());
+		//Nonfatal: continue without the mappings
+	}
+	open_first_controller();
+	set_background_color(0, 0, 0);
 }
 
 }  // namespace SDL
@@ -252,9 +265,6 @@ int main(int argc, char** argv)
 	Options::parse_commandline(argc, argv, args);
 
 	Log::set_level(args.verbose ? Log::VERBOSE : Log::INFO);
-	SDL::screen.int_scale = std::clamp(args.int_scale, 1, 8);
-	SDL::initialize();
-	SDL::set_background_color(0, 0, 0);
 
 	bool result = false;
 	for (const auto& path : search_paths(args.bios, args.cart))
@@ -296,6 +306,9 @@ int main(int argc, char** argv)
 	if (args.cart.empty())
 	{
 		Log::info("No ROM provided. Drop a Loopy ROM onto the window to play.");
+		// Appears some platforms achieve "open with" not by passing the arguments to the binary but by performing the open file action
+		// So don't prohibit starting into fullscreen without a ROM
+		// args.start_in_fullscreen = false;
 	}
 	else if (load_cart(config, args.cart))
 	{
@@ -307,12 +320,7 @@ int main(int argc, char** argv)
 		exit(1);
 	}
 
-	if (SDL_GameControllerAddMappingsFromFile((RESOURCE_PATH / CONTROLLER_DB_PATH).string().c_str()) < 0)
-	{
-		Log::warn("Could not load game controller database: %s", SDL_GetError());
-		//Nonfatal: continue without the mappings
-	}
-	SDL::open_first_controller();
+	SDL::initialize(args);
 
 	constexpr int framerate_target = 60;  //TODO: get this from Video if it can be changed (e.g. for PAL mode)
 	constexpr int framerate_max_lag = 5;
@@ -376,7 +384,6 @@ int main(int argc, char** argv)
 						{
 							screencap_path = PREFS_PATH / screencap_filename;
 						}
-						std::cout << screencap_path << "\n";
 						Log::info("Dumping frame...");
 						Video::dump_current_frame(screencap_path.string());
 					}
@@ -403,7 +410,7 @@ int main(int argc, char** argv)
 					SDL::change_int_scale(1);
 					break;
 				case SDLK_ESCAPE:
-					if (SDL::screen.fullscreen)
+					if (SDL::screen.is_fullscreen())
 					{
 						SDL::toggle_fullscreen();
 					}
@@ -441,6 +448,13 @@ int main(int argc, char** argv)
 						is_paused = true;
 					}
 					break;
+				}
+				break;
+			case SDL_MOUSEBUTTONUP:
+				// Double-click to toggle fullscreen
+				if (e.button.clicks >= 2 && config.cart.is_loaded())
+				{
+					SDL::toggle_fullscreen();
 				}
 				break;
 			case SDL_CONTROLLERDEVICEADDED:
