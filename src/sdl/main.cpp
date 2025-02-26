@@ -66,6 +66,10 @@ void open_first_controller()
 		{
 			Log::info("Connected to game controller %s", SDL_GameControllerNameForIndex(i));
 			controller = SDL_GameControllerOpen(i);
+			if (screen.is_fullscreen())
+			{
+				SDL_ShowCursor(SDL_DISABLE);
+			}
 			return;
 		}
 	}
@@ -88,6 +92,10 @@ void toggle_fullscreen()
 	{
 		Log::error("Error fullscreening: %s", SDL_GetError());
 		return;
+	}
+	if (!screen.is_fullscreen())
+	{
+		SDL_ShowCursor(SDL_ENABLE);
 	}
 }
 
@@ -425,8 +433,7 @@ int main(int argc, char** argv)
 			}
 			case SDL_CONTROLLERBUTTONDOWN:
 				// Quit on select+start
-				if (SDL::controller &&
-					SDL_GameControllerGetButton(SDL::controller, SDL_CONTROLLER_BUTTON_START) &&
+				if (SDL::controller && SDL_GameControllerGetButton(SDL::controller, SDL_CONTROLLER_BUTTON_START) &&
 					SDL_GameControllerGetButton(SDL::controller, SDL_CONTROLLER_BUTTON_BACK))
 				{
 					has_quit = true;
