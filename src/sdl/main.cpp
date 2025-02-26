@@ -40,6 +40,8 @@ static SDL_GameController* controller;
 
 void shutdown()
 {
+	SDL_ShowCursor(SDL_ENABLE);
+
 	//Destroy window, then kill SDL2
 	SDL_DestroyTexture(screen.texture);
 	SDL_DestroyRenderer(screen.renderer);
@@ -93,9 +95,9 @@ void toggle_fullscreen()
 		Log::error("Error fullscreening: %s", SDL_GetError());
 		return;
 	}
-	if (!screen.is_fullscreen())
+	if (controller)
 	{
-		SDL_ShowCursor(SDL_ENABLE);
+		SDL_ShowCursor(screen.is_fullscreen() ? SDL_DISABLE : SDL_ENABLE);
 	}
 }
 
