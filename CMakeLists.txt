@@ -27,7 +27,7 @@ find_package(SDL2 REQUIRED)
 include_directories(LoopyMSE PRIVATE ${SDL2_INCLUDE_DIRS})
 
 # The .a seems to be missing some symbols
-set(SDL2_MIXER_STATIC OFF CACHE BOOL "" FORCE)
+set(SDL2_MIXER_STATIC ON CACHE BOOL "" FORCE)
 find_package(SDL2_mixer REQUIRED)
 
 # HACK for homebrew's sdl2_mixer not exporting include paths...

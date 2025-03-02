@@ -33,7 +33,7 @@ if (APPLE)
 	set_target_properties(LoopyMSE PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist)
 endif()
 
-target_link_libraries (LoopyMSE PRIVATE core SDL2::SDL2-static SDL2_mixer::SDL2_mixer Boost::program_options)
+target_link_libraries (LoopyMSE PRIVATE core SDL2::SDL2-static SDL2_mixer::SDL2_mixer-static Boost::program_options)
 
 # INSTALLATION
 
