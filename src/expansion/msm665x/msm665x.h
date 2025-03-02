@@ -1,12 +1,13 @@
 #pragma once
+#include <string>
+
 #include "expansion/expansion.h"
 
-namespace Expansion
+namespace Expansion::MSM665X
 {
 
-class MSM665X : public IExpansion
-{
-	bool is_enabled() const override;
-};
+bool enable(uint32_t cart_checksum);
+void initialize(std::string rom_path);
+void shutdown();
 
-}  // namespace Expansion
+}  // namespace Expansion::MSM665X
