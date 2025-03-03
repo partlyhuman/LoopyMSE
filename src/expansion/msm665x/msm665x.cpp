@@ -38,10 +38,10 @@ bool enable(uint32_t cart_checksum)
 #ifdef LIMIT_TO_KNOWN_CARTS
 	enabled = EXPANSION_CARTS.count(cart_checksum) > 0;
 	Log::info("[MSM665] enabled for cart %X? %d\n", cart_checksum, enabled);
-	return enabled;
 #else
-	return true;
+	enabled = true;
 #endif
+	return enabled;
 }
 
 void reset_params()
