@@ -34,6 +34,7 @@ void shutdown()
 
 void unmapped_write8(uint32_t addr, uint8_t value)
 {
+	MSM665X::unmapped_write8(addr, value);
 }
 
 }  // namespace Expansion
