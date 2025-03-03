@@ -2,6 +2,7 @@
 
 #include <SDL2/SDL.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <iostream>
 #include <unordered_set>

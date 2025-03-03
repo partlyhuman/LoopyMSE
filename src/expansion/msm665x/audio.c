@@ -36,7 +36,7 @@
 #define AUDIO_FORMAT AUDIO_S32LSB
 
 /* Frequency of the file */
-#define AUDIO_FREQUENCY 192000
+#define AUDIO_FREQUENCY 48000
 
 /* 1 mono, 2 stereo, 4 quad, 6 (5.1) */
 #define AUDIO_CHANNELS 1
@@ -61,7 +61,7 @@
  * SDL_AUDIO_ALLOW_CHANNELS_CHANGE      Allow any number of channels (e.g. AUDIO_CHANNELS being 2, allow actual 1)
  * SDL_AUDIO_ALLOW_ANY_CHANGE           Allow all changes above
  */
-#define SDL_AUDIO_ALLOW_CHANGES SDL_AUDIO_ALLOW_ANY_CHANGE
+#define SDL_AUDIO_ALLOW_CHANGES SDL_AUDIO_ALLOW_FREQUENCY_CHANGE|SDL_AUDIO_ALLOW_CHANNELS_CHANGE
 
 /*
  * Definition for the game global sound device
