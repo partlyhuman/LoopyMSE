@@ -9,12 +9,13 @@
 #include "audio.h"
 #include "log/log.h"
 
-#define LIMIT_TO_KNOWN_CARTS
-#define DEFAULT_VOL 64
+// define this to only run on specific carts by header
+// in this stage of development, no harm turning it on always
+#undef LIMIT_TO_KNOWN_CARTS
 
 std::unordered_set<uint32_t> EXPANSION_CARTS = {
 	0xD90FE762,	 // Wanwan Aijou Monogatari
-	0x11EEBE7A,	 // Wanwan-T-En
+	0x11EEBE7A,	 // Wanwan-T-En (subject to change)
 };
 
 namespace fs = std::filesystem;
@@ -79,8 +80,8 @@ void initialize(std::string rom_path_str)
 
 	if (wavs.empty()) return;
 
-	// We definitely have audio to play
-	if (SDL_Init(SDL_INIT_AUDIO) < 0)
+	// We definitely have audio to play, safe to initialize
+	if (SDL_WasInit(SDL_INIT_AUDIO) == 0 && SDL_Init(SDL_INIT_AUDIO) < 0)
 	{
 		Log::error("[MSM665] SDL audio init failed: %s", SDL_GetError());
 		return;
@@ -91,7 +92,7 @@ void initialize(std::string rom_path_str)
 	for (auto const& wav : wavs)
 	{
 		Log::debug("[MSM665] Loading %s into sound index %d", wav.string().c_str(), sounds.size());
-		sounds.push_back(createAudio(wav.string().c_str(), 0, DEFAULT_VOL));
+		sounds.push_back(createAudio(wav.string().c_str(), 0, 0));
 	}
 
 	reset_params();
@@ -148,6 +149,8 @@ void voice_control(uint8_t data)
 	}
 }
 
+// TODO change API to return bool so that expansions can indicate whether this was handled by an expansion
+// and suppress the warning
 void unmapped_write8(uint32_t addr, uint8_t value)
 {
 	if (!enabled) return;
@@ -197,6 +200,7 @@ void unmapped_write8(uint32_t addr, uint8_t value)
 		else
 		{
 			Log::debug("[MSM665] Stop");
+			// TODO Not in this braindead audio player impl currently, can be added
 			// msm.stop_sound();
 		}
 	}
