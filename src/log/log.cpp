@@ -46,6 +46,11 @@ void log_level(Level l)
 	}
 }
 
+void trace(const char *fmt, ...)
+{
+	PRINTF(TRACE);
+}
+
 void debug(const char *fmt, ...)
 {
 	PRINTF(DEBUG);

@@ -131,6 +131,11 @@ void playSoundFromMemory(Audio *audio, int volume)
 	playAudio(NULL, audio, 0, volume);
 }
 
+void playSoundFromMemoryLooping(Audio *audio, int volume, uint8_t loop)
+{
+	playAudio(NULL, audio, loop, volume);
+}
+
 void playMusicFromMemory(Audio *audio, int volume)
 {
 	playAudio(NULL, audio, 1, volume);
