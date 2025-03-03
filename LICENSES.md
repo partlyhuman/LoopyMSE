@@ -23,3 +23,10 @@ freely, subject to the following restrictions:
 
 Uses SDL_GameControllerDB
 https://github.com/mdqinc/SDL_GameControllerDB
+
+---
+
+Uses Simple SDL2 Audio
+https://github.com/jakebesworth/Simple-SDL2-Audio
+
+No license included, treated as public domain
