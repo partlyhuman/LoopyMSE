@@ -12,6 +12,7 @@
 #include "core/loopy_io.h"
 #include "core/sh2/peripherals/sh2_ocpm.h"
 #include "core/sh2/sh2_local.h"
+#include "expansion/expansion.h"
 
 namespace SH2::Bus
 {
@@ -68,6 +69,7 @@ uint32_t unmapped_read32(uint32_t addr)
 void unmapped_write8(uint32_t addr, uint8_t value)
 {
 	Log::warn("[SH2] unmapped write8 %08X: %02X", addr, value);
+	Expansion::unmapped_write8(addr, value);
 }
 
 void unmapped_write16(uint32_t addr, uint16_t value)
