@@ -23,6 +23,11 @@ namespace Expansion::MSM665X
 {
 
 bool enabled = false;
+bool is_enabled()
+{
+	return enabled;
+}
+
 std::vector<Audio*> sounds;
 
 double computed_volume = 1;
@@ -107,6 +112,7 @@ void shutdown()
 	}
 	sounds.clear();
 	endAudio();
+	enabled = false;
 }
 
 void option_set(uint8_t data)
@@ -149,9 +155,7 @@ void voice_control(uint8_t data)
 	}
 }
 
-// TODO change API to return bool so that expansions can indicate whether this was handled by an expansion
-// and suppress the warning
-void unmapped_write8(uint32_t addr, uint8_t value)
+void write8(uint32_t addr, uint8_t value)
 {
 	if (!enabled) return;
 	if (addr >> 16 != 0x040A) return;

@@ -29,23 +29,24 @@ static uint32_t translate_addr(uint32_t addr)
 	return addr & ~0xF0000000;
 }
 
-#define MMIO_ACCESS(access, ...)                                                                                   \
-	if (addr >= OCPM::ORAM_BASE_ADDR && addr < OCPM::ORAM_END_ADDR) return OCPM::oram_##access(__VA_ARGS__);       \
-	if (addr >= Video::PALETTE_START && addr < Video::PALETTE_END) return Video::palette_##access(__VA_ARGS__);    \
-	if (addr >= Video::OAM_START && addr < Video::OAM_END) return Video::oam_##access(__VA_ARGS__);                \
-	if (addr >= Video::CAPTURE_START && addr < Video::CAPTURE_END) return Video::capture_##access(__VA_ARGS__);    \
-	if (addr >= Video::CTRL_REG_START && addr < Video::CTRL_REG_END) return Video::ctrl_##access(__VA_ARGS__);     \
-	if (addr >= Video::BITMAP_REG_START && addr < Video::BITMAP_REG_END)                                           \
-		return Video::bitmap_reg_##access(__VA_ARGS__);                                                            \
-	if (addr >= Video::BGOBJ_REG_START && addr < Video::BGOBJ_REG_END) return Video::bgobj_##access(__VA_ARGS__);  \
-	if (addr >= Video::DISPLAY_REG_START && addr < Video::DISPLAY_REG_END)                                         \
-		return Video::display_##access(__VA_ARGS__);                                                               \
-	if (addr >= Video::IRQ_REG_START && addr < Video::IRQ_REG_END) return Video::irq_##access(__VA_ARGS__);        \
-	if (addr >= LoopyIO::BASE_ADDR && addr < LoopyIO::END_ADDR) return LoopyIO::reg_##access(__VA_ARGS__);         \
-	if (addr >= Video::DMA_CTRL_START && addr < Video::DMA_CTRL_END) return Video::dma_ctrl_##access(__VA_ARGS__); \
-	if (addr >= Video::DMA_START && addr < Video::DMA_END) return Video::dma_##access(__VA_ARGS__);                \
-	if (addr >= OCPM::IO_BASE_ADDR && addr < OCPM::IO_END_ADDR) return OCPM::io_##access(__VA_ARGS__);             \
-	if (addr >= Sound::CTRL_START && addr < Sound::CTRL_END) return Sound::ctrl_##access(__VA_ARGS__);             \
+#define MMIO_ACCESS(access, ...)                                                                                      \
+	if (addr >= OCPM::ORAM_BASE_ADDR && addr < OCPM::ORAM_END_ADDR) return OCPM::oram_##access(__VA_ARGS__);          \
+	if (addr >= Video::PALETTE_START && addr < Video::PALETTE_END) return Video::palette_##access(__VA_ARGS__);       \
+	if (addr >= Video::OAM_START && addr < Video::OAM_END) return Video::oam_##access(__VA_ARGS__);                   \
+	if (addr >= Video::CAPTURE_START && addr < Video::CAPTURE_END) return Video::capture_##access(__VA_ARGS__);       \
+	if (addr >= Video::CTRL_REG_START && addr < Video::CTRL_REG_END) return Video::ctrl_##access(__VA_ARGS__);        \
+	if (addr >= Video::BITMAP_REG_START && addr < Video::BITMAP_REG_END)                                              \
+		return Video::bitmap_reg_##access(__VA_ARGS__);                                                               \
+	if (addr >= Video::BGOBJ_REG_START && addr < Video::BGOBJ_REG_END) return Video::bgobj_##access(__VA_ARGS__);     \
+	if (addr >= Video::DISPLAY_REG_START && addr < Video::DISPLAY_REG_END)                                            \
+		return Video::display_##access(__VA_ARGS__);                                                                  \
+	if (addr >= Video::IRQ_REG_START && addr < Video::IRQ_REG_END) return Video::irq_##access(__VA_ARGS__);           \
+	if (addr >= LoopyIO::BASE_ADDR && addr < LoopyIO::END_ADDR) return LoopyIO::reg_##access(__VA_ARGS__);            \
+	if (addr >= Video::DMA_CTRL_START && addr < Video::DMA_CTRL_END) return Video::dma_ctrl_##access(__VA_ARGS__);    \
+	if (addr >= Video::DMA_START && addr < Video::DMA_END) return Video::dma_##access(__VA_ARGS__);                   \
+	if (addr >= OCPM::IO_BASE_ADDR && addr < OCPM::IO_END_ADDR) return OCPM::io_##access(__VA_ARGS__);                \
+	if (addr >= Sound::CTRL_START && addr < Sound::CTRL_END) return Sound::ctrl_##access(__VA_ARGS__);                \
+	if (addr >= Expansion::MAPPED_START && addr < Expansion::MAPPED_END) return Expansion::exp_##access(__VA_ARGS__); \
 	return unmapped_##access(__VA_ARGS__);
 
 uint8_t unmapped_read8(uint32_t addr)
@@ -69,7 +70,6 @@ uint32_t unmapped_read32(uint32_t addr)
 void unmapped_write8(uint32_t addr, uint8_t value)
 {
 	Log::warn("[SH2] unmapped write8 %08X: %02X", addr, value);
-	Expansion::unmapped_write8(addr, value);
 }
 
 void unmapped_write16(uint32_t addr, uint16_t value)
