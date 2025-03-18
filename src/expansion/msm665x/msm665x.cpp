@@ -173,7 +173,7 @@ void write8(uint32_t addr, uint8_t value)
 			if (index >= 0 && index < wavs.size())
 			{
 				Log::debug("[MSM665] Play sample %d", data);
-				Sound::wav_play(wavs[index], computed_volume);
+				Sound::wav_play(wavs[index].string(), computed_volume);
 			}
 			else
 			{
