@@ -7,8 +7,8 @@
 #include <iostream>
 #include <unordered_set>
 
-#include "audio.h"
 #include "log/log.h"
+#include "sound/sound.h"
 
 // define this to only run on specific carts by header
 // in this stage of development, no harm turning it on always
@@ -29,7 +29,7 @@ bool is_enabled()
 	return enabled;
 }
 
-std::vector<Audio*> sounds;
+std::vector<fs::path> wavs;
 
 double computed_volume = 1;
 uint8_t op_v = 0;
@@ -76,7 +76,6 @@ void initialize(std::string rom_path_str)
 	if (!fs::is_directory(pcm_path)) return;
 	Log::debug("[MSM665] found pcm path %s", pcm_path.string().c_str());
 
-	std::vector<fs::path> wavs;
 	for (auto const& dir_entry : std::filesystem::directory_iterator(pcm_path))
 	{
 		if (!dir_entry.is_regular_file() || dir_entry.path().extension().string() != ".wav") continue;
@@ -85,34 +84,13 @@ void initialize(std::string rom_path_str)
 	std::sort(wavs.begin(), wavs.end());
 
 	if (wavs.empty()) return;
-
-	// We definitely have audio to play, safe to initialize
-	if (SDL_WasInit(SDL_INIT_AUDIO) == 0 && SDL_Init(SDL_INIT_AUDIO) < 0)
-	{
-		Log::error("[MSM665] SDL audio init failed: %s", SDL_GetError());
-		return;
-	}
-	initAudio();
-
-	sounds.clear();
-	for (auto const& wav : wavs)
-	{
-		Log::debug("[MSM665] Loading %s into sound index %d", wav.string().c_str(), sounds.size());
-		sounds.push_back(createAudio(wav.string().c_str(), 0, 0));
-	}
-
 	reset_params();
 }
 
 void shutdown()
 {
-	if (!enabled || sounds.empty()) return;
-	for (const auto& thing : sounds)
-	{
-		freeAudio(thing);
-	}
-	sounds.clear();
-	endAudio();
+	if (!enabled || wavs.empty()) return;
+	wavs.clear();
 	enabled = false;
 }
 
@@ -192,21 +170,20 @@ void write8(uint32_t addr, uint8_t value)
 		{
 			// OKI sounds are 1-indexed
 			int index = data - 1;
-			if (index >= 0 && index < sounds.size())
+			if (index >= 0 && index < wavs.size())
 			{
 				Log::debug("[MSM665] Play sample %d", data);
-				playSoundFromMemoryLooping(sounds[index], computed_volume * SDL_MIX_MAXVOLUME, vc_rp == 3);
+				Sound::wav_play(wavs[index], computed_volume);
 			}
 			else
 			{
-				Log::warn("[MSM665] Sample %d out of range [1-%d]", index, sounds.size());
+				Log::warn("[MSM665] Sample %d out of range [1-%d]", index, wavs.size());
 			}
 		}
 		else
 		{
 			Log::debug("[MSM665] Stop");
-			// TODO Not in this braindead audio player impl currently, can be added
-			// msm.stop_sound();
+			Sound::wav_stop();
 		}
 	}
 }

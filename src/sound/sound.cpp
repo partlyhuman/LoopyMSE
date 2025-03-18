@@ -47,12 +47,33 @@ static void buffer_callback(float* buffer, uint32_t count);
 /* SDL-specific code start */
 
 static SDL_AudioDeviceID audio_device;
+SDL_AudioSpec format_obtained;
+SDL_AudioStream* wav_stream = NULL;
+double wav_volume = 1;
 
 static void sdl_audio_callback(void* userdata, uint8_t* raw_buffer, int len)
 {
 	float* sample_buffer = (float*)raw_buffer;
 	int sample_count = len / sizeof(float);
 	buffer_callback(sample_buffer, sample_count);
+
+	if (wav_stream != NULL)
+	{
+		int avails = SDL_AudioStreamAvailable(wav_stream);
+		if (avails <= 0)
+		{
+			SDL_FreeAudioStream(wav_stream);
+			wav_stream = NULL;
+		}
+		else
+		{
+			int wav_len = SDL_min(len, avails);
+			auto wav_buf = (uint8_t*)malloc(sizeof(uint8_t) * wav_len);
+			wav_len = SDL_AudioStreamGet(wav_stream, wav_buf, wav_len);
+			SDL_MixAudioFormat(raw_buffer, wav_buf, format_obtained.format, wav_len, wav_volume * SDL_MIX_MAXVOLUME);
+			free(wav_buf);
+		}
+	}
 }
 
 static bool sdl_audio_initialize()
@@ -76,7 +97,6 @@ static bool sdl_audio_initialize()
 	assert(sizeof(float) == 4);
 
 	// Try to open a device using this format
-	SDL_AudioSpec format_obtained;
 	audio_device = SDL_OpenAudioDevice(NULL, 0, &format_desired, &format_obtained, 0);
 	if (!audio_device)
 	{
@@ -232,6 +252,40 @@ static void buffer_callback(float* sample_buffer, uint32_t sample_count)
 		{
 			sample_buffer[i] = 0.f;
 		}
+	}
+}
+
+void wav_play(std::string path, double volume)
+{
+	wav_volume = SDL_clamp(volume, 0, 1);
+	SDL_RWops* src = SDL_RWFromFile(path.c_str(), "rb");
+	SDL_AudioSpec wav_spec;
+	Uint8* wav_raw;
+	Uint32 wav_len;
+	if (SDL_LoadWAV_RW(src, 1, &wav_spec, &wav_raw, &wav_len) == NULL)
+	{
+		Log::error("Failed to load wav at %s: %s", path.c_str(), SDL_GetError());
+		return;
+	}
+	if (wav_stream == NULL)
+	{
+		wav_stream = SDL_NewAudioStream(
+			wav_spec.format, wav_spec.channels, wav_spec.freq, format_obtained.format, format_obtained.channels,
+			format_obtained.freq
+		);
+	}
+	else
+	{
+		SDL_AudioStreamClear(wav_stream);
+	}
+	SDL_AudioStreamPut(wav_stream, wav_raw, wav_len);
+}
+
+void wav_stop()
+{
+	if (wav_stream != NULL)
+	{
+		SDL_AudioStreamClear(wav_stream);
 	}
 }
 

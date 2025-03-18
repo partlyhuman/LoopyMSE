@@ -39,7 +39,6 @@ constexpr static int MUTE_FADE_MS = 20;
 
 // Audio synthesis parameters in loopysound.h.
 
-
 void initialize(std::vector<uint8_t>& sound_rom);
 void shutdown();
 
@@ -56,4 +55,7 @@ void ctrl_write32(uint32_t addr, uint32_t value);
 void midi_byte_in(uint8_t value);
 void set_mute(bool mute_in);
 
-}
+void wav_play(std::string path, double volume);
+void wav_stop();
+
+}  // namespace Sound
