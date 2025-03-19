@@ -47,9 +47,12 @@ static void buffer_callback(float* buffer, uint32_t count);
 /* SDL-specific code start */
 
 static SDL_AudioDeviceID audio_device;
-SDL_AudioSpec format_obtained;
-SDL_AudioStream* wav_stream = NULL;
-double wav_volume = 1;
+static SDL_AudioSpec audio_device_spec;
+
+static SDL_AudioSpec wav_spec;
+static SDL_AudioStream* wav_stream = NULL;
+static std::vector<uint8_t> wav_buf;
+static double wav_volume = 1;
 
 static void sdl_audio_callback(void* userdata, uint8_t* raw_buffer, int len)
 {
@@ -59,19 +62,18 @@ static void sdl_audio_callback(void* userdata, uint8_t* raw_buffer, int len)
 
 	if (wav_stream != NULL)
 	{
-		int avails = SDL_AudioStreamAvailable(wav_stream);
-		if (avails <= 0)
+		int wav_len = SDL_min(len, SDL_AudioStreamAvailable(wav_stream));
+		if (wav_len > 0)
 		{
-			SDL_FreeAudioStream(wav_stream);
-			wav_stream = NULL;
-		}
-		else
-		{
-			int wav_len = SDL_min(len, avails);
-			auto wav_buf = (uint8_t*)malloc(sizeof(uint8_t) * wav_len);
-			wav_len = SDL_AudioStreamGet(wav_stream, wav_buf, wav_len);
-			SDL_MixAudioFormat(raw_buffer, wav_buf, format_obtained.format, wav_len, wav_volume * SDL_MIX_MAXVOLUME);
-			free(wav_buf);
+			if (wav_len > wav_buf.size())
+			{
+				wav_buf.resize(wav_len);
+			}
+			len = SDL_AudioStreamGet(wav_stream, wav_buf.data(), wav_len);
+			SDL_MixAudioFormat(
+				raw_buffer, wav_buf.data(), audio_device_spec.format, wav_len,
+				volume_level * wav_volume * SDL_MIX_MAXVOLUME
+			);
 		}
 	}
 }
@@ -97,7 +99,7 @@ static bool sdl_audio_initialize()
 	assert(sizeof(float) == 4);
 
 	// Try to open a device using this format
-	audio_device = SDL_OpenAudioDevice(NULL, 0, &format_desired, &format_obtained, 0);
+	audio_device = SDL_OpenAudioDevice(NULL, 0, &format_desired, &audio_device_spec, 0);
 	if (!audio_device)
 	{
 		Log::error("[Sound] No audio device available");
@@ -105,8 +107,8 @@ static bool sdl_audio_initialize()
 	}
 
 	// Set parameters from the actual format
-	sample_rate = format_obtained.freq;
-	buffer_size = format_obtained.samples;
+	sample_rate = audio_device_spec.freq;
+	buffer_size = audio_device_spec.samples;
 
 	// Finally enable output
 	SDL_PauseAudioDevice(audio_device, 0);
@@ -146,6 +148,12 @@ void initialize(std::vector<uint8_t>& sound_rom)
 
 void shutdown()
 {
+	if (wav_stream)
+	{
+		SDL_FreeAudioStream(wav_stream);
+		wav_stream = NULL;
+	}
+	wav_buf.clear();
 	sdl_audio_shutdown();
 	sound_engine = nullptr;
 }
@@ -258,32 +266,45 @@ static void buffer_callback(float* sample_buffer, uint32_t sample_count)
 void wav_play(std::string path, double volume)
 {
 	wav_volume = SDL_clamp(volume, 0, 1);
-	SDL_RWops* src = SDL_RWFromFile(path.c_str(), "rb");
-	SDL_AudioSpec wav_spec;
-	Uint8* wav_raw;
-	Uint32 wav_len;
-	if (SDL_LoadWAV_RW(src, 1, &wav_spec, &wav_raw, &wav_len) == NULL)
+
+	SDL_AudioSpec spec;
+	Uint8* raw;
+	Uint32 len;
+	if (SDL_LoadWAV_RW(SDL_RWFromFile(path.c_str(), "rb"), 1, &spec, &raw, &len) == NULL)
 	{
 		Log::error("Failed to load wav at %s: %s", path.c_str(), SDL_GetError());
 		return;
 	}
-	if (wav_stream == NULL)
-	{
-		wav_stream = SDL_NewAudioStream(
-			wav_spec.format, wav_spec.channels, wav_spec.freq, format_obtained.format, format_obtained.channels,
-			format_obtained.freq
-		);
-	}
-	else
+
+	if (wav_stream)
 	{
 		SDL_AudioStreamClear(wav_stream);
+		if (wav_spec.format != spec.format || wav_spec.channels != spec.channels || wav_spec.freq != spec.freq)
+		{
+			Log::info("[Sound] Different stream type, freeing");
+			SDL_FreeAudioStream(wav_stream);
+			wav_stream = NULL;
+		}
 	}
-	SDL_AudioStreamPut(wav_stream, wav_raw, wav_len);
+
+	if (!wav_stream)
+	{
+		Log::info("[Sound] Stream created");
+		wav_spec = spec;
+		wav_stream = SDL_NewAudioStream(
+			spec.format, spec.channels, spec.freq, audio_device_spec.format, audio_device_spec.channels,
+			audio_device_spec.freq
+		);
+	}
+
+	SDL_AudioStreamPut(wav_stream, raw, len);
+	SDL_AudioStreamFlush(wav_stream);
+	SDL_FreeWAV(raw);
 }
 
 void wav_stop()
 {
-	if (wav_stream != NULL)
+	if (wav_stream)
 	{
 		SDL_AudioStreamClear(wav_stream);
 	}
