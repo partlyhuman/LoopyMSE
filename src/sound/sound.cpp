@@ -60,7 +60,7 @@ static void sdl_audio_callback(void* userdata, uint8_t* raw_buffer, int len)
 	int sample_count = len / sizeof(float);
 	buffer_callback(sample_buffer, sample_count);
 
-	if (wav_stream != NULL)
+	if (wav_stream)
 	{
 		int wav_len = SDL_min(len, SDL_AudioStreamAvailable(wav_stream));
 		if (wav_len > 0)
@@ -109,6 +109,7 @@ static bool sdl_audio_initialize()
 	// Set parameters from the actual format
 	sample_rate = audio_device_spec.freq;
 	buffer_size = audio_device_spec.samples;
+	wav_buf.reserve(TARGET_BUFFER_SIZE);
 
 	// Finally enable output
 	SDL_PauseAudioDevice(audio_device, 0);
@@ -272,16 +273,17 @@ void wav_play(std::string path, double volume)
 	Uint32 len;
 	if (SDL_LoadWAV_RW(SDL_RWFromFile(path.c_str(), "rb"), 1, &spec, &raw, &len) == NULL)
 	{
-		Log::error("Failed to load wav at %s: %s", path.c_str(), SDL_GetError());
+		Log::error("[Sound] WAV Failed to load at %s: %s", path.c_str(), SDL_GetError());
 		return;
 	}
+	Log::debug("[Sound] WAV playing %s", path.c_str());
 
 	if (wav_stream)
 	{
 		SDL_AudioStreamClear(wav_stream);
 		if (wav_spec.format != spec.format || wav_spec.channels != spec.channels || wav_spec.freq != spec.freq)
 		{
-			Log::info("[Sound] Different stream type, freeing");
+			Log::debug("[Sound] WAV of different stream type than previously used, freeing");
 			SDL_FreeAudioStream(wav_stream);
 			wav_stream = NULL;
 		}
@@ -289,7 +291,7 @@ void wav_play(std::string path, double volume)
 
 	if (!wav_stream)
 	{
-		Log::info("[Sound] Stream created");
+		Log::debug("[Sound] WAV stream created");
 		wav_spec = spec;
 		wav_stream = SDL_NewAudioStream(
 			spec.format, spec.channels, spec.freq, audio_device_spec.format, audio_device_spec.channels,
