@@ -73,7 +73,27 @@ jobs:
       id: strings
       shell: bash
       run: |
-        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          github_workspace="${{ github.workspace }}"          
+          github_workspace=$(echo "$github_workspace" | sed 's/\\/\//g')
+          build_output_dir="$github_workspace/build"
+          echo "github_workspace=$github_workspace" >> "$GITHUB_OUTPUT"
+          echo "build-output-dir=$build_output_dir" >> "$GITHUB_OUTPUT"
+        else
+          build_output_dir="${{ github.workspace }}/build"
+          echo "build-output-dir=$build_output_dir" >> "$GITHUB_OUTPUT"
+        fi        
+
+    - name: Configure CMake (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: msys2 {0}
+      run: >
+        cmake -B "${{ steps.strings.outputs.build-output-dir }}"
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -G "MinGW Makefiles"
+        -S "${{ steps.strings.outputs.github_workspace }}""
 
     - name: Configure CMake
       if: matrix.os != 'windows-latest'
@@ -85,17 +105,6 @@ jobs:
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -S ${{ github.workspace }}
-
-    - name: Configure CMake (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: msys2 {0}
-      run: >
-        cmake -B "${{ steps.strings.outputs.build-output-dir }}"
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -G "MinGW Makefiles"
-        -S "${{ github.workspace }}""
 
     - name: Build
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
