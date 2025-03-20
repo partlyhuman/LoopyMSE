@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cassert>
 #include <common/bswp.h>
+#include <cstring>
 #include "core/sh2/peripherals/sh2_dmac.h"
 #include "core/sh2/peripherals/sh2_intc.h"
 #include "core/sh2/peripherals/sh2_serial.h"
