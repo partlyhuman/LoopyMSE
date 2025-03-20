@@ -38,7 +38,7 @@ jobs:
     - name: Dependencies (MacOS)
       if: startsWith(matrix.os, 'macos-')
       shell: bash
-      run: brew install cmake sdl2 boost
+      run: brew install sdl2 boost
 
     - name: Dependencies (Ubuntu)
       if: startsWith(matrix.os, 'ubuntu-')
