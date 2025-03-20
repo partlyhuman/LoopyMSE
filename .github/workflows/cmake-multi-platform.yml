@@ -1,6 +1,4 @@
-# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
-# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
-name: CMake on multiple platforms
+name: Multiplatform Build
 
 on:
   push:
@@ -14,7 +12,7 @@ jobs:
 
     strategy:
       # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
-      fail-fast: false
+      fail-fast: true
 
       matrix:
         os: [ubuntu-latest, windows-latest, macos-13, macos-latest]
@@ -92,12 +90,12 @@ jobs:
       if: matrix.os == 'windows-latest'
       shell: msys2 {0}
       run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        cmake -B "${{ steps.strings.outputs.build-output-dir }}"
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -G "MinGW Makefiles"
-        -S ${{ github.workspace }}
+        -S "${{ github.workspace }}""
 
     - name: Build
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
