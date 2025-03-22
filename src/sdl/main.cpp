@@ -213,14 +213,13 @@ bool load_cart(Config::SystemInfo& config, std::string path)
 
 bool load_bios(Config::SystemInfo& config, fs::path path)
 {
-	Log::debug("Looking for BIOS in %s", path.c_str());
-
 	std::ifstream bios_file(path, std::ios::binary);
 	if (!bios_file.is_open())
 	{
 		Log::debug("Couldn't load BIOS at %s", path.c_str());
 		return false;
 	}
+	Log::info("Located BIOS at %s", path.c_str());
 
 	config.bios_rom.assign(std::istreambuf_iterator<char>(bios_file), {});
 	bios_file.close();
@@ -229,14 +228,13 @@ bool load_bios(Config::SystemInfo& config, fs::path path)
 
 bool load_sound_bios(Config::SystemInfo& config, fs::path path)
 {
-	Log::debug("Looking for Sound BIOS in %s", path.c_str());
-
 	std::ifstream sound_rom_file(path, std::ios::binary);
 	if (!sound_rom_file.is_open())
 	{
 		Log::debug("Couldn't load Sound BIOS at %s", path.c_str());
 		return false;
 	}
+	Log::info("Located Sound BIOS at %s", path.c_str());
 
 	config.sound_rom.assign(std::istreambuf_iterator<char>(sound_rom_file), {});
 	sound_rom_file.close();
@@ -254,6 +252,11 @@ std::vector<fs::path> search_paths(fs::path file_path, fs::path cart_path)
 		}
 		vec.push_back(PREFS_PATH / file_path);
 		vec.push_back(RESOURCE_PATH / file_path);
+#ifdef __APPLE__
+		// On MacOS, look in the folder containing the .app as well as Resources/ in the bundle
+		// RESOURCE_PATH = ./LoopyMSE.app/Contents/Resources
+		vec.push_back(fs::canonical(RESOURCE_PATH / ".." / ".." / ".." / file_path));
+#endif
 	}
 	vec.push_back(file_path);
 	return vec;
