@@ -7,11 +7,11 @@ Features still TODO:
 
 ## Builds
 
-[Github Actions](actions/) provides up-to-date builds for Linux, Windows, MacOS Intel, MacOS ARM64.
+[Github Actions](../../actions/) provides up-to-date builds for Linux, Windows, MacOS Intel, MacOS ARM64.
 
 ## Usage
 
-See the [Readme](blob/main/assets/README.md) (included in builds).
+See the [Readme](assets/README.md) (included in builds).
 
 ## Special Thanks
 kasami - sound implementation, dumping the BIOS, HW testing, and many other valuable non-code contributions  
