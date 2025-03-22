@@ -1,42 +1,17 @@
 # LoopyMSE
-A Casio Loopy emulator. WIP, but able to run some games.
-Includes functional but slightly buggy/incomplete sound emulation.
+A Casio Loopy emulator. WIP, plays commercial games with sound.
 
-## How to use
-LoopyMSE must be launched from the command line with these arguments: `<game ROM> <BIOS> [sound BIOS]`
+Features still TODO:
+- Printer emulation
+- Mouse emulation
 
-The emulator will automatically load .sav files with the same name as the game ROM. If no .sav file exists, the emulator will create one. Specifying the save file to use in the command line may be added at a future date.
+## Builds
 
-The sound BIOS file is optional, and the emulator will run silently if it is not provided. The file may be incorrectly labelled as "Printer BIOS" in older ROM sets.
+[Github Actions](actions/) provides up-to-date builds for Linux, Windows, MacOS Intel, MacOS ARM64.
 
-NOTE: all files must be in big-endian format.
+## Usage
 
-## Controls
-Only hardcoded keyboard keys for the time being:
-
-| Loopy | Keyboard |
-| ----- | -------- |
-| A | Z |
-| B | X |
-| C | A |
-| D | S |
-| L1 | Q |
-| R1 | W |
-| Up | Up |
-| Down | Down |
-| Left | Left |
-| Right | Right |
-| Start | Enter/Return |
-
-Special keys:
-
-| Key | Function |
-| --- | -------- |
-| F10 | Screenshot current frame to output_display.bmp |
-| F11 | Toggle fullscreen |
-| F12 | Reboot Loopy |
-|  =  | Increase integer scale |
-|  -  | Decrease integer scale |
+See the [Readme](blob/main/assets/README.md) (included in builds).
 
 ## Special Thanks
 kasami - sound implementation, dumping the BIOS, HW testing, and many other valuable non-code contributions  
