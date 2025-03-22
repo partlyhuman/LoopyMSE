@@ -255,7 +255,7 @@ std::vector<fs::path> search_paths(fs::path file_path, fs::path cart_path)
 #ifdef __APPLE__
 		// On MacOS, look in the folder containing the .app as well as Resources/ in the bundle
 		// RESOURCE_PATH = ./LoopyMSE.app/Contents/Resources
-		vec.push_back(fs::canonical(RESOURCE_PATH / ".." / ".." / ".." / file_path));
+		vec.push_back(RESOURCE_PATH / ".." / ".." / ".." / file_path);
 #endif
 	}
 	vec.push_back(file_path);
