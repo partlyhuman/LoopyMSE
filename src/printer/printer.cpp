@@ -109,7 +109,7 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 		if (print_success)
 		{
 			Log::info("[Printer] saved print data to %s", print_path.string().c_str());
-			show_print_messagebox(print_path.string());
+			//show_print_messagebox(print_path.string());
 		}
 		else
 		{
