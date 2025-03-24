@@ -1,6 +1,9 @@
 #pragma once
 #include <string>
 #include <cstdint>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 namespace Video
 {
@@ -61,7 +64,8 @@ bool check_frame_end();
 
 uint16_t* get_display_output();
 
-void dump_current_frame(std::string path);
+void dump_all_bmps(int image_type, fs::path base_path); //TEMP ADDED
+void dump_current_frame(int image_type, fs::path path);
 void dump_for_serial();
 
 //TODO: should these MMIO accessors be moved to a different file?

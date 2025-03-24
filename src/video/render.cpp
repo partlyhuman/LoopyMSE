@@ -202,6 +202,7 @@ static void draw_bg(int index, int screen_y)
 		//0 is transparent, no matter if it's 4-bit or 8-bit
 		if (!tile_data)
 		{
+			write_color_raw(vdp.bg_output[index], screen_x, screen_y, 0);
 			continue;
 		}
 
@@ -315,6 +316,7 @@ static void draw_bitmap(int index, int y)
 		//Now that the buffer control logic has been processed, the pixel can actually be drawn appropriately
 		if (!data)
 		{
+			write_color_raw(vdp.bitmap_output[index], x, y, 0);
 			continue;
 		}
 

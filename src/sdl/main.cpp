@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <common/bswp.h>
+#include <common/imgwriter.h>
 #include <core/config.h>
 #include <core/system.h>
 #include <input/input.h>
@@ -15,6 +16,8 @@
 
 #include "config.h"
 #include "options.h"
+
+namespace imagew = Common::ImageWriter;
 
 namespace SDL
 {
@@ -388,18 +391,22 @@ int main(int argc, char** argv)
 				case SDLK_F10:
 					if (config.cart.is_loaded())
 					{
-						fs::path screencap_filename("loopy.bmp");
-						fs::path screencap_path(config.cart.rom_path);
+						int screencap_image_type = imagew::IMAGE_TYPE_BMP;
+						fs::path screencap_filename(imagew::make_unique_name("loopymse_"));
+						fs::path screencap_path(fs::absolute(config.cart.rom_path));
 						if (screencap_path.has_parent_path())
 						{
-							screencap_path = screencap_path.parent_path() / screencap_filename;
+							screencap_path = screencap_path.parent_path();
 						}
 						else
 						{
-							screencap_path = PREFS_PATH / screencap_filename;
+							screencap_path = PREFS_PATH;
 						}
-						Log::info("Dumping frame...");
-						Video::dump_current_frame(screencap_path.string());
+						//Video::dump_all_bmps(screencap_image_type, screencap_path);
+						screencap_filename += imagew::image_extension(screencap_image_type);
+						screencap_path = screencap_path / screencap_filename;
+						Log::info("Dumping frame to %s ...", screencap_filename.c_str());
+						Video::dump_current_frame(screencap_image_type, screencap_path);
 					}
 					break;
 				case SDLK_F11:
