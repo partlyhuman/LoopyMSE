@@ -103,10 +103,17 @@ void update_print_temp()
 
 void update_sensors()
 {
-	constexpr int bits_region = 1;        //Board is always configured for NTSC
-	constexpr int bits_print_sensor = 0;  //Printer sensors all low (printer not implemented)
-	constexpr int bits_seal_type = 0;     //No seal cartridge installed (printer not implemented)
-	state.latched_sensors = (state.latched_sensors & ~0x007F) | (bits_seal_type << 4) | (bits_print_sensor << 1) | bits_region;
+	//Stock mainboard is always configured for NTSC
+	constexpr int region_jumper = 1;
+
+	//BIOS hooks allow simulated printing of XS-11 type seals
+	constexpr bool seal_cartridge_present = true;
+	constexpr int seal_cartridge_type = 1;
+
+	//Set sensors for appropriate idle state
+	int print_mech_sensors = seal_cartridge_present ? 0b100 : 0b011;
+
+	state.latched_sensors = (state.latched_sensors & 0x0100) | ((seal_cartridge_type & 7) << 4) | ((print_mech_sensors & 7) << 1) | (region_jumper & 1);
 }
 
 }  // namespace LoopyIO

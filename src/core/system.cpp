@@ -4,6 +4,7 @@
 #include <input/input.h>
 #include <sound/sound.h>
 #include <video/video.h>
+#include <printer/printer.h>
 
 #include "core/cart.h"
 #include "core/loopy_io.h"
@@ -35,6 +36,7 @@ void initialize(Config::SystemInfo& config)
 	Video::initialize();
 	Sound::initialize(config.sound_rom);
 	Expansion::initialize(config.cart);
+	Printer::initialize();
 
 	//Hook up connections between modules
 	SH2::OCPM::Serial::set_tx_callback(1, &Sound::midi_byte_in);
@@ -43,6 +45,7 @@ void initialize(Config::SystemInfo& config)
 void shutdown()
 {
 	//Shutdown all components in the reverse order they were initialized
+	Printer::shutdown();
 	Expansion::shutdown();
 	Sound::shutdown();
 	Video::shutdown();

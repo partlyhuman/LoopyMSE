@@ -30,4 +30,4 @@ add_library (core STATIC
 			 "sh2/peripherals/sh2_serial.cpp"
 			 "sh2/peripherals/sh2_serial.h")
 
-target_link_libraries (core PRIVATE log common input video sound expansion)
+target_link_libraries (core PRIVATE log common input video sound expansion printer)
