@@ -8,7 +8,6 @@
 #include <core/sh2/sh2_bus.h>
 #include <core/sh2/sh2_local.h>
 #include <log/log.h>
-#include <sound/sound.h>
 
 #include <SDL2/SDL.h>
 
@@ -47,7 +46,7 @@ bool motor_move_hook(uint32_t src_addr, uint32_t dst_addr)
 bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 {
 	//Hook the BIOS print function
-	Log::info("[Printer] function %04X called from %08X", dst_addr, src_addr);
+	Log::debug("[Printer] function %04X called from %08X", dst_addr, src_addr);
 	uint32_t sp = sh2.gpr[15];
 	uint32_t p1 = sh2.gpr[4];
 	uint32_t p2 = sh2.gpr[5];
@@ -68,10 +67,11 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 	// Dump the data to be printed
 	uint32_t width = p3d_dims & 0xFFFF;
 	uint32_t height = p3d_dims >> 16;
-	Log::info("[Printer] Size=%dx%d", width, height);
 
-	int pixel_format = p6d_format & 15;
 	int format_flags = p6d_format >> 4;
+	int pixel_format = p6d_format & 15;
+	Log::info("[Printer] size=%dx%d, format=%d:%d", width, height, format_flags, pixel_format);
+
 	if (format_flags == 0 && (pixel_format == 1 || pixel_format == 3))
 	{
 		int print_image_type = imagew::get_default_image_type();
@@ -118,7 +118,7 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 	}
 	else
 	{
-		Log::info("[Printer] unknown format %02X, aborting", p6d_format);
+		Log::info("[Printer] unknown format %d:%d, aborting", format_flags, pixel_format);
 		print_success = false;
 	}
 
@@ -131,14 +131,14 @@ void initialize()
 {
 	SH2::add_hook(ADDR_MOTOR_MOVE, &motor_move_hook);
 	SH2::add_hook(ADDR_PRINT, &print_hook);
-	Log::info("[Printer] registered hooks for print and motor-move BIOS calls");
+	Log::debug("[Printer] registered hooks for print and motor-move BIOS calls");
 }
 
 void shutdown()
 {
 	SH2::remove_hook(ADDR_MOTOR_MOVE);
 	SH2::remove_hook(ADDR_PRINT);
-	Log::info("[Printer] unregistered hooks");
+	Log::debug("[Printer] unregistered hooks");
 }
 
 }
