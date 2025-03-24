@@ -1,8 +1,11 @@
 #pragma once
 #include <cstdint>
+#include <unordered_map>
 
 namespace SH2
 {
+
+typedef bool (*BranchHookFunc)(uint32_t, uint32_t);
 
 struct CPU
 {
@@ -19,6 +22,8 @@ struct CPU
 	int pending_irq_vector;
 
 	uint8_t** pagetable;
+
+	std::unordered_map<uint32_t, BranchHookFunc> branch_hooks;
 };
 
 extern CPU sh2;
@@ -28,5 +33,8 @@ void irq_check();
 void raise_exception(int vector_id);
 void set_pc(uint32_t new_pc);
 void set_sr(uint32_t new_sr);
+
+void add_hook(uint32_t address, BranchHookFunc hook);
+void remove_hook(uint32_t address);
 
 }

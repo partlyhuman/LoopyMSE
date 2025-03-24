@@ -41,6 +41,8 @@ static void handle_jump(uint32_t dst, bool delay_slot)
 {
 	//TODO: raise an exception if this function is called within a delay slot
 
+	uint32_t src = sh2.pc - 4;
+
 	//Small hack: if in a delay slot, immediately execute the next instruction
 	if (delay_slot)
 	{
@@ -50,6 +52,22 @@ static void handle_jump(uint32_t dst, bool delay_slot)
 		uint16_t instr = Bus::read16(sh2.pc - 4);
 		sh2.pc = dst + 2;
 		run(instr);
+	}
+
+	//Find and run the hook function for branches at this address
+	//TODO: split into smaller paged maps if we expect more than a few hooks
+	if (sh2.branch_hooks.find(dst) != sh2.branch_hooks.end())
+	{
+		SH2::BranchHookFunc hook = sh2.branch_hooks.at(dst);
+		
+		//If hook returns true, replace the branch entirely and continue execution after
+		//Otherwise continue and apply new PC as normal
+		if (hook(src, dst))
+		{
+			sh2.pc = src + 2;
+			if (delay_slot) sh2.pc += 2;
+			return;
+		}
 	}
 
 	sh2.pc = dst + 2;

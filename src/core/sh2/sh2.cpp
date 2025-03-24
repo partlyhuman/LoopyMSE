@@ -1,7 +1,9 @@
 #include <algorithm>
 #include <cassert>
-#include <common/bswp.h>
 #include <cstring>
+
+#include <common/bswp.h>
+
 #include "core/sh2/peripherals/sh2_dmac.h"
 #include "core/sh2/peripherals/sh2_intc.h"
 #include "core/sh2/peripherals/sh2_serial.h"
@@ -88,7 +90,7 @@ void initialize()
 
 void shutdown()
 {
-	//nop
+	sh2.branch_hooks.clear();
 }
 
 void run()
@@ -152,6 +154,16 @@ void set_sr(uint32_t new_sr)
 {
 	sh2.sr = new_sr & 0x3F3;
 	irq_check();
+}
+
+void add_hook(uint32_t address, BranchHookFunc hook)
+{
+	sh2.branch_hooks.emplace(address, hook);
+}
+
+void remove_hook(uint32_t address)
+{
+	sh2.branch_hooks.erase(address);
 }
 
 }
