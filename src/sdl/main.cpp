@@ -219,10 +219,10 @@ bool load_bios(Config::SystemInfo& config, fs::path path)
 	std::ifstream bios_file(path, std::ios::binary);
 	if (!bios_file.is_open())
 	{
-		Log::debug("Couldn't load BIOS at %s", path.c_str());
+		Log::debug("Couldn't load BIOS at %s", path.string().c_str());
 		return false;
 	}
-	Log::info("Located BIOS at %s", path.c_str());
+	Log::info("Located BIOS at %s", path.string().c_str());
 
 	config.bios_rom.assign(std::istreambuf_iterator<char>(bios_file), {});
 	bios_file.close();
@@ -234,10 +234,10 @@ bool load_sound_bios(Config::SystemInfo& config, fs::path path)
 	std::ifstream sound_rom_file(path, std::ios::binary);
 	if (!sound_rom_file.is_open())
 	{
-		Log::debug("Couldn't load Sound BIOS at %s", path.c_str());
+		Log::debug("Couldn't load Sound BIOS at %s", path.string().c_str());
 		return false;
 	}
-	Log::info("Located Sound BIOS at %s", path.c_str());
+	Log::info("Located Sound BIOS at %s", path.string().c_str());
 
 	config.sound_rom.assign(std::istreambuf_iterator<char>(sound_rom_file), {});
 	sound_rom_file.close();

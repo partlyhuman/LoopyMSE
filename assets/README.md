@@ -57,6 +57,23 @@ Additionally, these special functions are available.
 | Reboot      | F12 |
 | Exit        | Esc |
 
+Screenshots are saved in the same directory as the loaded ROM, or in the same directory as `loopymse.ini` if the ROM directory is not available for some reason.
+Currently, screenshots are saved in .bmp format only, and with a unique file name that contains the date and time, prefixed with `loopymse_`.
+
+## Printing
+
+LoopyMSE has basic printer emulation for the most common types of seals. When a game tries to print a supported type, it will be saved as an image.
+The location and file name of the saved image are similar to screenshots, but prefixed with `print_`.
+On supported systems, the image is automatically opened with the associated application.
+
+Seals are printed at pixel-perfect scale like the emulator display, which means they are technically the wrong aspect ratio.
+If you want to scale them to correct for this, aim for an 8:7 relative ratio, resulting in *approximately* 4:3 total.
+For example a 256x224 seal looks good if first doubled to 512x448 with nearest-neighbor and then stretched to 585x448 with bilinear/bicubic.
+
+If an image file can't be created, LoopyMSE reports a general printing failure to the game, and the game should handle it appropriately.
+A general failure is also reported if a game tries to print an unsupported seal type.
+Printing is implemented at a high level by interpreting data sent to the BIOS, so the supported types depend on currently understood data formats.
+
 ## MacOS Security
 
 LoopyMSE is not signed or notarized, so you will only be able to run it if you "Allow Applications From App Store & Known Developers" in System Preferences > Privacy & Security.

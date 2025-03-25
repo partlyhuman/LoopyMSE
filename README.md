@@ -2,7 +2,6 @@
 A Casio Loopy emulator. WIP, plays commercial games with sound.
 
 Features still TODO:
-- Printer emulation
 - Mouse emulation
 
 ## Builds
@@ -14,5 +13,5 @@ Features still TODO:
 See the [Readme](assets/README.md) (included in builds).
 
 ## Special Thanks
-kasami - sound implementation, dumping the BIOS, HW testing, and many other valuable non-code contributions  
+kasami - sound & printer implementation, dumping the BIOS, HW testing, and many other valuable non-code contributions  
 UBCH server - translations and moral support
