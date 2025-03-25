@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <sstream>
 #include <iomanip>
+#include <cmath>
 
 #include <common/imgwriter.h>
 #include <core/sh2/sh2_bus.h>
@@ -67,6 +68,20 @@ void show_print_file(fs::path print_path)
 	}
 }
 
+template <typename T>
+std::vector<T> double_pixel_data(std::vector<T> data, uint32_t width, uint32_t height)
+{
+	std::vector<T> data_doubled(width * height * 4);
+	for (int y = 0; y < height*2; y++)
+	{
+		for (int x = 0; x < width*2; x++)
+		{
+			data_doubled[y * (width * 2) + x] = data[(y/2) * width + (x/2)];
+		}
+	}
+	return data_doubled;
+}
+
 bool motor_move_hook(uint32_t src_addr, uint32_t dst_addr)
 {
 	//Hook slow moving printer function and skip it for faster boot
@@ -102,11 +117,15 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 	uint32_t width = p3_dims & 0xFFFF;
 	uint32_t height = p3_dims >> 16;
 
-	int format_flags = p6_format >> 4;
+	int pixel_double = p6_format >> 4;
 	int pixel_format = p6_format & 15;
-	Log::info("[Printer] size=%dx%d, format=%d:%d", width, height, format_flags, pixel_format);
 
-	if (format_flags == 0 && (pixel_format == 1 || pixel_format == 3))
+	//TODO: is there more complex logic to this?
+	height = std::min(height, (uint32_t)(pixel_double == 1 ? 112 : 224));
+
+	Log::info("[Printer] size=%dx%d, format=%d:%d", width, height, pixel_double, pixel_format);
+
+	if ((pixel_double == 0 || pixel_double == 1) && (pixel_format == 1 || pixel_format == 3))
 	{
 		int print_image_type = imagew::get_default_image_type();
 		fs::path print_path = fs::absolute(printer_output_dir) / imagew::make_unique_name("print_");
@@ -126,7 +145,15 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 				palette[p] = Bus::read16(p2_palette + (p * 2));
 			}
 
-			print_success = imagew::save_image_8bpp(print_image_type, print_path, width, height, &data[0], 256, palette);
+			if (pixel_double == 1)
+			{
+				std::vector<uint8_t> data_doubled = double_pixel_data<uint8_t>(data, width, height);
+				print_success = imagew::save_image_8bpp(print_image_type, print_path, width*2, height*2, &data_doubled[0], 256, palette);
+			}
+			else
+			{
+				print_success = imagew::save_image_8bpp(print_image_type, print_path, width, height, &data[0], 256, palette);
+			}
 		}
 		if (pixel_format == 1)
 		{
@@ -136,8 +163,16 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 			{
 				data[i] = Bus::read16(p1_data + (i * 2));
 			}
-
-			print_success = imagew::save_image_16bpp(print_image_type, print_path, width, height, &data[0]);
+			
+			if (pixel_double == 1)
+			{
+				std::vector<uint16_t> data_doubled = double_pixel_data<uint16_t>(data, width, height);
+				print_success = imagew::save_image_16bpp(print_image_type, print_path, width*2, height*2, &data_doubled[0]);
+			}
+			else
+			{
+				print_success = imagew::save_image_16bpp(print_image_type, print_path, width, height, &data[0]);
+			}
 		}
 
 		if (print_success)
@@ -153,7 +188,7 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 	}
 	else
 	{
-		Log::info("[Printer] unknown format %d:%d, aborting", format_flags, pixel_format);
+		Log::info("[Printer] unknown format %d:%d, aborting", pixel_double, pixel_format);
 		print_success = false;
 	}
 
