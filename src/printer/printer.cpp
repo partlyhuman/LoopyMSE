@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <filesystem>
+#include <sstream>
 #include <iomanip>
 
 #include <common/imgwriter.h>
