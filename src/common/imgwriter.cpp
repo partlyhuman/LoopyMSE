@@ -5,6 +5,7 @@
 #include <cstring>
 #include <ctime>
 #include <fstream>
+#include <vector>
 
 namespace Common::ImageWriter
 {
@@ -32,7 +33,7 @@ fs::path make_unique_name(std::string prefix, std::string suffix)
 	return prefix + timestamp_buffer + "_" + std::to_string(unique_number++) + suffix;
 }
 
-bool write_bmp(fs::path path, uint32_t width, uint32_t height, uint32_t data[])
+bool write_bmp(fs::path path, uint32_t width, uint32_t height, uint32_t data[], bool transparent)
 {
 	std::ofstream bmp_file(path, std::ios::binary);
 	if (!bmp_file.is_open()) return false;
@@ -42,8 +43,10 @@ bool write_bmp(fs::path path, uint32_t width, uint32_t height, uint32_t data[])
 	bmp_file.write(SIGNATURE, 2);
 
 	uint32_t head_size = 14;
-	uint32_t info_size = 108;
-	uint32_t data_size = (width * height * 4);
+	uint32_t info_size = transparent ? 108 : 40;
+	uint32_t data_size_per_row = transparent ? (width * 4) : (width * 3);
+	uint32_t padding_per_row = (4 - (data_size_per_row % 4)) % 4; 
+	uint32_t data_size = (data_size_per_row + padding_per_row) * height;
 
 	uint32_t file_size = head_size + info_size + data_size;
 	bmp_file.write((char*)&file_size, 4);
@@ -63,10 +66,10 @@ bool write_bmp(fs::path path, uint32_t width, uint32_t height, uint32_t data[])
 	uint16_t planes = 1;
 	bmp_file.write((char*)&planes, 2);
 
-	uint16_t bpp = 32;
+	uint16_t bpp = transparent ? 32 : 24;
 	bmp_file.write((char*)&bpp, 2);
 
-	uint32_t compression = 3; // BI_BITFIELDS
+	uint32_t compression = transparent ? 3 : 0; // BI_BITFIELDS or BI_RGB
 	bmp_file.write((char*)&compression, 4);
 
 	bmp_file.write((char*)&data_size, 4);
@@ -79,43 +82,55 @@ bool write_bmp(fs::path path, uint32_t width, uint32_t height, uint32_t data[])
 	bmp_file.write((char*)&num_colors, 4);
 	bmp_file.write((char*)&num_colors, 4);
 
-	uint32_t bitmask_r = 0xFF << 16;
-	uint32_t bitmask_g = 0xFF << 8;
-	uint32_t bitmask_b = 0xFF;
-	uint32_t bitmask_a = 0xFF << 24;
-	bmp_file.write((char*)&bitmask_r, 4);
-	bmp_file.write((char*)&bitmask_g, 4);
-	bmp_file.write((char*)&bitmask_b, 4);
-	bmp_file.write((char*)&bitmask_a, 4);
+	if (transparent)
+	{
+		uint32_t bitmask_r = 0xFF << 16;
+		uint32_t bitmask_g = 0xFF << 8;
+		uint32_t bitmask_b = 0xFF;
+		uint32_t bitmask_a = 0xFF << 24;
+		bmp_file.write((char*)&bitmask_r, 4);
+		bmp_file.write((char*)&bitmask_g, 4);
+		bmp_file.write((char*)&bitmask_b, 4);
+		bmp_file.write((char*)&bitmask_a, 4);
 
-	const char* color_space = "sRGB";
-	bmp_file.write((char*)&color_space, 4);
-	bmp_file.write((char*)&reserved, 4);
-	bmp_file.write((char*)&reserved, 4);
-	bmp_file.write((char*)&reserved, 4);
-	bmp_file.write((char*)&reserved, 4);
-	bmp_file.write((char*)&reserved, 4);
-	bmp_file.write((char*)&reserved, 4);
-	bmp_file.write((char*)&reserved, 4);
-	bmp_file.write((char*)&reserved, 4);
-	bmp_file.write((char*)&reserved, 4);
-	bmp_file.write((char*)&reserved, 4);
-	bmp_file.write((char*)&reserved, 4);
-	bmp_file.write((char*)&reserved, 4);
+		const char* color_space = "sRGB";
+		bmp_file.write((char*)&color_space, 4);
+		bmp_file.write((char*)&reserved, 4);
+		bmp_file.write((char*)&reserved, 4);
+		bmp_file.write((char*)&reserved, 4);
+		bmp_file.write((char*)&reserved, 4);
+		bmp_file.write((char*)&reserved, 4);
+		bmp_file.write((char*)&reserved, 4);
+		bmp_file.write((char*)&reserved, 4);
+		bmp_file.write((char*)&reserved, 4);
+		bmp_file.write((char*)&reserved, 4);
+		bmp_file.write((char*)&reserved, 4);
+		bmp_file.write((char*)&reserved, 4);
+		bmp_file.write((char*)&reserved, 4);
+	}
 
 	for (int y = 0; y < height; y++)
 	{
 		int flipped_y = height - y - 1;
-		bmp_file.write((char*)&data[flipped_y * width], width * 4);
+		for (int x = 0; x < width; x++)
+		{
+			//Write B,G,R,A or B,G,R (assumes system is little-endian!)
+			uint32_t pixel_argb = data[flipped_y * width + x];
+			bmp_file.write((char*)&pixel_argb, transparent ? 4 : 3);
+		}
+		if (padding_per_row > 0)
+		{
+			bmp_file.write((char*)&reserved, padding_per_row);
+		}
 	}
 
 	bmp_file.close();
 	return true;
 }
 
-bool write_image(int image_type, fs::path path, uint32_t width, uint32_t height, uint32_t data[])
+bool write_image(int image_type, fs::path path, uint32_t width, uint32_t height, uint32_t data[], bool transparent)
 {
-	if (image_type == IMAGE_TYPE_BMP) return write_bmp(path, width, height, data);
+	if (image_type == IMAGE_TYPE_BMP) return write_bmp(path, width, height, data, transparent);
 	return false;
 }
 
@@ -140,7 +155,7 @@ bool save_image_16bpp(int image_type, fs::path path, uint32_t width, uint32_t he
 		data_argb[i] = color_16bpp_to_argb(data[i] | alpha_set);
 	}
 
-	return write_image(image_type, path, width, height, data_argb);
+	return write_image(image_type, path, width, height, data_argb, transparent);
 }
 
 bool save_image_8bpp(int image_type, fs::path path, uint32_t width, uint32_t height, uint8_t data[], uint32_t num_colors, uint16_t palette[], bool transparent)
