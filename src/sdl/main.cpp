@@ -278,6 +278,9 @@ int main(int argc, char** argv)
 		Log::info("Creating default ini file");
 		fs::copy_file(RESOURCE_PATH / INI_PATH, PREFS_PATH / INI_PATH);
 	}
+
+	config.image_save_directory = PREFS_PATH;
+
 	Options::parse_config(PREFS_PATH / INI_PATH, args);
 	Options::parse_commandline(argc, argv, args);
 
@@ -329,6 +332,11 @@ int main(int argc, char** argv)
 	}
 	else if (load_cart(config, args.cart))
 	{
+		fs::path rom_path = fs::absolute(config.cart.rom_path);
+		if (rom_path.has_parent_path())
+		{
+			config.image_save_directory = rom_path.parent_path();
+		}
 		System::initialize(config);
 	}
 	else
@@ -393,20 +401,12 @@ int main(int argc, char** argv)
 					{
 						int screencap_image_type = imagew::IMAGE_TYPE_BMP;
 						fs::path screencap_filename(imagew::make_unique_name("loopymse_"));
-						fs::path screencap_path(fs::absolute(config.cart.rom_path));
-						if (screencap_path.has_parent_path())
-						{
-							screencap_path = screencap_path.parent_path();
-						}
-						else
-						{
-							screencap_path = PREFS_PATH;
-						}
-						//Video::dump_all_bmps(screencap_image_type, screencap_path);
 						screencap_filename += imagew::image_extension(screencap_image_type);
-						screencap_path = screencap_path / screencap_filename;
-						Log::info("Dumping frame to %s ...", screencap_filename.c_str());
-						Video::dump_current_frame(screencap_image_type, screencap_path);
+
+						Log::info("Saving screenshot to %s", screencap_filename.string().c_str());
+						Video::dump_current_frame(screencap_image_type, config.image_save_directory / screencap_filename);
+
+						//Video::dump_all_bmps(screencap_image_type, config.image_save_directory);
 					}
 					break;
 				case SDLK_F11:
@@ -506,6 +506,13 @@ int main(int argc, char** argv)
 				if (load_cart(config, path))
 				{
 					Log::info("Loaded %s...", path.c_str());
+					
+					fs::path rom_path = fs::absolute(config.cart.rom_path);
+					if (rom_path.has_parent_path())
+					{
+						config.image_save_directory = rom_path.parent_path();
+					}
+					
 					System::initialize(config);
 					// So you can tell that MSE is running even before you click into it
 					is_paused = false;

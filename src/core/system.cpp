@@ -36,7 +36,7 @@ void initialize(Config::SystemInfo& config)
 	Video::initialize();
 	Sound::initialize(config.sound_rom);
 	Expansion::initialize(config.cart);
-	Printer::initialize();
+	Printer::initialize(config);
 
 	//Hook up connections between modules
 	SH2::OCPM::Serial::set_tx_callback(1, &Sound::midi_byte_in);
