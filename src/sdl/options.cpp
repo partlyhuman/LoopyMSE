@@ -7,8 +7,10 @@
 
 #include "input/input.h"
 #include "log/log.h"
+#include "common/imgwriter.h"
 
 namespace po = boost::program_options;
+namespace imagew = Common::ImageWriter;
 
 namespace Options
 {
@@ -146,9 +148,15 @@ bool parse_config(fs::path config_path, Args& args)
 		("emulator.run_in_background", po::value<bool>()->default_value(false), "Continue emulation while window not focused")
 		("emulator.start_in_fullscreen", po::value<bool>()->default_value(false), "Default to fullscreen mode")
 		("emulator.int_scale", po::value<int>()->default_value(3), "Integer scale")
+		("emulator.screenshot_image_type", po::value<std::string>()->default_value("bmp"), "Image file type for screenshots");
+	
+	po::options_description printer_options("Printer");
+	printer_options.add_options()
+		("printer.image_type", po::value<std::string>()->default_value("bmp"), "Image file type for printed files")
+		("printer.view_command", po::value<std::string>()->default_value("OPEN"), "Command to run with printed files");
 
 	po::options_description options;
-	options.add(key_options).add(button_options).add(emu_options);
+	options.add(key_options).add(button_options).add(emu_options).add(printer_options);
 
 	if (!std::ifstream(config_path))
 	{
@@ -166,6 +174,10 @@ bool parse_config(fs::path config_path, Args& args)
 		args.run_in_background = vm["emulator.run_in_background"].as<bool>();
 		args.start_in_fullscreen = vm["emulator.start_in_fullscreen"].as<bool>();
 		args.int_scale = vm["emulator.int_scale"].as<int>();
+		args.screenshot_image_type = imagew::parse_image_type(vm["emulator.screenshot_image_type"].as<std::string>(), imagew::IMAGE_TYPE_DEFAULT);
+
+		args.printer_image_type = imagew::parse_image_type(vm["printer.image_type"].as<std::string>(), imagew::IMAGE_TYPE_DEFAULT);
+		args.printer_view_command = vm["printer.view_command"].as<std::string>();
 
 		// Keymap
 		for (const auto& [cfg_key, pad_key] : KEYBOARD_CONFIG_KEY_TO_PAD_ENUM)

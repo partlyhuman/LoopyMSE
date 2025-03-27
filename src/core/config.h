@@ -25,6 +25,9 @@ struct CartInfo
 struct EmulatorOpts
 {
 	fs::path image_save_directory;
+	int screenshot_image_type;
+	int printer_image_type;
+	std::string printer_view_command;
 };
 
 struct SystemInfo

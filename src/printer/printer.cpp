@@ -1,10 +1,11 @@
 #include "printer/printer.h"
 
-#include <vector>
-#include <filesystem>
-#include <sstream>
-#include <iomanip>
+#include <algorithm> 
 #include <cmath>
+#include <filesystem>
+#include <iomanip>
+#include <sstream>
+#include <vector>
 
 #include <common/imgwriter.h>
 #include <core/sh2/sh2_bus.h>
@@ -28,37 +29,67 @@ constexpr static int PRINT_STATUS_PAPER_JAM = 4;
 constexpr static int PRINT_STATUS_OVERHEAT = 5;
 
 static fs::path output_dir;
+static int output_type;
+static std::string view_command;
 
 using namespace SH2;
 
 void show_print_file(fs::path print_path)
 {
+	if (view_command.empty() || print_path.empty()) return;
+
 	std::stringstream cmd;
-	bool has_command = false;
+
+	if (view_command == "(OPEN)")
+	{
+		bool has_command = false;
+#ifdef _WIN32
+		// Windows: system call: start "" <path>
+		cmd << "start " << "\"\" " << print_path;
+		has_command = true;
+#elif __APPLE__ && __MACH__
+		// OSX: system call: open <path> &
+		cmd << "open " << print_path << " &";
+		has_command = true;
+#elif __linux__
+		// Linux: system call: xdg-open <path> &
+		cmd << "xdg-open " << print_path << " &";
+		has_command = true;
+#endif
+		if (has_command)
+		{
+			Log::info("[Printer] trying to open print in default viewer...");
+			system(cmd.str().c_str());
+		}
+		else
+		{
+			Log::info("[Printer] default viewer not supported on this platform");
+		}
+		return;
+	}
+
+	std::string file_placeholder = "$1";
+	size_t file_pos = view_command.find(file_placeholder);
 
 #ifdef _WIN32
-	// Windows: system call: start "" <path>
-	cmd << "start " << "\"\" " << print_path;
-	has_command = true;
-#elif __APPLE__ && __MACH__
-	// OSX: system call: open <path>
-	cmd << "open " << print_path;
-	has_command = true;
-#elif __linux__
-	// Linux: system call: xdg-open <path>
-	cmd << "xdg-open " << print_path;
-	has_command = true;
+	cmd << "start ";
 #endif
 
-	if (has_command)
+	if (file_pos == std::string::npos)
 	{
-		Log::info("[Printer] trying to open print in system viewer...");	
-		system(cmd.str().c_str());
+		cmd << view_command << " " << print_path;
 	}
 	else
 	{
-		Log::info("[Printer] can't open files on this platform");
+		cmd << view_command.substr(0, file_pos) << print_path << view_command.substr(file_pos + file_placeholder.length());
 	}
+
+#ifndef _WIN32
+	cmd << " &";
+#endif
+
+	Log::info("[Printer] trying to open print with the following command: %s", cmd.str().c_str());	
+	system(cmd.str().c_str());
 }
 
 template <typename T>
@@ -120,9 +151,8 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 
 	if ((pixel_double == 0 || pixel_double == 1) && (pixel_format == 1 || pixel_format == 3))
 	{
-		int print_image_type = imagew::get_default_image_type();
 		fs::path print_path = fs::absolute(output_dir) / imagew::make_unique_name("print_");
-		print_path += imagew::image_extension(print_image_type);
+		print_path += imagew::image_extension(output_type);
 
 		if (pixel_format == 3)
 		{
@@ -141,11 +171,11 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 			if (pixel_double == 1)
 			{
 				std::vector<uint8_t> data_doubled = double_pixel_data<uint8_t>(data, width, height);
-				print_success = imagew::save_image_8bpp(print_image_type, print_path, width*2, height*2, &data_doubled[0], 256, palette);
+				print_success = imagew::save_image_8bpp(output_type, print_path, width*2, height*2, &data_doubled[0], 256, palette);
 			}
 			else
 			{
-				print_success = imagew::save_image_8bpp(print_image_type, print_path, width, height, &data[0], 256, palette);
+				print_success = imagew::save_image_8bpp(output_type, print_path, width, height, &data[0], 256, palette);
 			}
 		}
 		if (pixel_format == 1)
@@ -160,11 +190,11 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 			if (pixel_double == 1)
 			{
 				std::vector<uint16_t> data_doubled = double_pixel_data<uint16_t>(data, width, height);
-				print_success = imagew::save_image_16bpp(print_image_type, print_path, width*2, height*2, &data_doubled[0]);
+				print_success = imagew::save_image_16bpp(output_type, print_path, width*2, height*2, &data_doubled[0]);
 			}
 			else
 			{
-				print_success = imagew::save_image_16bpp(print_image_type, print_path, width, height, &data[0]);
+				print_success = imagew::save_image_16bpp(output_type, print_path, width, height, &data[0]);
 			}
 		}
 
@@ -193,7 +223,12 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 void initialize(Config::SystemInfo& config)
 {
 	output_dir = config.emulator.image_save_directory;
-	
+	output_type = config.emulator.printer_image_type;
+
+	view_command = config.emulator.printer_view_command;
+	view_command.erase(view_command.begin(), std::find_if(view_command.begin(), view_command.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+	view_command.erase(std::find_if(view_command.rbegin(), view_command.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), view_command.end());
+
 	SH2::add_hook(ADDR_MOTOR_MOVE, &motor_move_hook);
 	SH2::add_hook(ADDR_PRINT, &print_hook);
 	Log::debug("[Printer] registered hooks for print and motor-move BIOS calls");

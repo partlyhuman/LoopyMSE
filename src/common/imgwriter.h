@@ -9,8 +9,9 @@ namespace Common::ImageWriter
 {
 
 constexpr static int IMAGE_TYPE_BMP = 1;
+constexpr static int IMAGE_TYPE_DEFAULT = IMAGE_TYPE_BMP;
 
-int get_default_image_type();
+int parse_image_type(std::string type, int default_);
 
 fs::path image_extension(int image_type);
 fs::path make_unique_name(std::string prefix = "", std::string suffix = "");

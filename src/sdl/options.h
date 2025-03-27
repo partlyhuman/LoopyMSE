@@ -16,6 +16,10 @@ struct Args
 	bool start_in_fullscreen;
 	bool verbose;
 	int int_scale = 2;
+	int screenshot_image_type;
+
+	int printer_image_type;
+	std::string printer_view_command;
 };
 
 void parse_commandline(int argc, char** argv, Args& args);

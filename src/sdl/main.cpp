@@ -283,6 +283,9 @@ int main(int argc, char** argv)
 	Options::parse_commandline(argc, argv, args);
 
 	config.emulator.image_save_directory = PREFS_PATH;
+	config.emulator.screenshot_image_type = args.screenshot_image_type;
+	config.emulator.printer_image_type = args.printer_image_type;
+	config.emulator.printer_view_command = args.printer_view_command;
 
 	Log::set_level(args.verbose ? Log::VERBOSE : Log::INFO);
 
@@ -350,7 +353,7 @@ int main(int argc, char** argv)
 	constexpr int framerate_target = 60;  //TODO: get this from Video if it can be changed (e.g. for PAL mode)
 	constexpr int framerate_max_lag = 5;
 	int last_frame_ticks = SDL_GetPerformanceCounter();
-	
+
 	while (!has_quit)
 	{
 		//Check how much time passed since we drew the last frame
@@ -400,7 +403,7 @@ int main(int argc, char** argv)
 				case SDLK_F10:
 					if (config.cart.is_loaded())
 					{
-						int screenshot_image_type = imagew::IMAGE_TYPE_BMP;
+						int screenshot_image_type = config.emulator.screenshot_image_type;
 						fs::path screenshot_filename(imagew::make_unique_name("loopymse_"));
 						screenshot_filename += imagew::image_extension(screenshot_image_type);
 

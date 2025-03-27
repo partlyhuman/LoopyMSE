@@ -2,6 +2,7 @@
 
 #include <log/log.h>
 
+#include <algorithm>
 #include <cstring>
 #include <ctime>
 #include <fstream>
@@ -10,10 +11,14 @@
 namespace Common::ImageWriter
 {
 
-int get_default_image_type()
+int parse_image_type(std::string type, int default_)
 {
-	//TODO: get this from config or something
-	return IMAGE_TYPE_BMP;
+	std::transform(type.begin(), type.end(), type.begin(), [](unsigned char c){ return std::tolower(c); });
+	if (type == "bmp" || type == ".bmp" || type == "bitmap")
+	{
+		return IMAGE_TYPE_BMP;
+	}
+	return default_;
 }
 
 fs::path image_extension(int image_type)
