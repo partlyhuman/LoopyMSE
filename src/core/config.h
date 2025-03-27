@@ -22,13 +22,17 @@ struct CartInfo
 	}
 };
 
+struct EmulatorOpts
+{
+	fs::path image_save_directory;
+};
+
 struct SystemInfo
 {
 	CartInfo cart;
+	EmulatorOpts emulator;
 	std::vector<uint8_t> bios_rom;
 	std::vector<uint8_t> sound_rom;
-
-	fs::path image_save_directory;
 };
 
 }  // namespace Config

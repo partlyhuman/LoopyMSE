@@ -279,10 +279,10 @@ int main(int argc, char** argv)
 		fs::copy_file(RESOURCE_PATH / INI_PATH, PREFS_PATH / INI_PATH);
 	}
 
-	config.image_save_directory = PREFS_PATH;
-
 	Options::parse_config(PREFS_PATH / INI_PATH, args);
 	Options::parse_commandline(argc, argv, args);
+
+	config.emulator.image_save_directory = PREFS_PATH;
 
 	Log::set_level(args.verbose ? Log::VERBOSE : Log::INFO);
 
@@ -335,7 +335,7 @@ int main(int argc, char** argv)
 		fs::path rom_path = fs::absolute(config.cart.rom_path);
 		if (rom_path.has_parent_path())
 		{
-			config.image_save_directory = rom_path.parent_path();
+			config.emulator.image_save_directory = rom_path.parent_path();
 		}
 		System::initialize(config);
 	}
@@ -349,7 +349,8 @@ int main(int argc, char** argv)
 
 	constexpr int framerate_target = 60;  //TODO: get this from Video if it can be changed (e.g. for PAL mode)
 	constexpr int framerate_max_lag = 5;
-	int last_frame_ticks = INT_MAX;
+	int last_frame_ticks = SDL_GetPerformanceCounter();
+	
 	while (!has_quit)
 	{
 		//Check how much time passed since we drew the last frame
@@ -399,14 +400,14 @@ int main(int argc, char** argv)
 				case SDLK_F10:
 					if (config.cart.is_loaded())
 					{
-						int screencap_image_type = imagew::IMAGE_TYPE_BMP;
-						fs::path screencap_filename(imagew::make_unique_name("loopymse_"));
-						screencap_filename += imagew::image_extension(screencap_image_type);
+						int screenshot_image_type = imagew::IMAGE_TYPE_BMP;
+						fs::path screenshot_filename(imagew::make_unique_name("loopymse_"));
+						screenshot_filename += imagew::image_extension(screenshot_image_type);
 
-						Log::info("Saving screenshot to %s", screencap_filename.string().c_str());
-						Video::dump_current_frame(screencap_image_type, config.image_save_directory / screencap_filename);
+						Log::info("Saving screenshot to %s", screenshot_filename.string().c_str());
+						Video::dump_current_frame(screenshot_image_type, config.emulator.image_save_directory / screenshot_filename);
 
-						//Video::dump_all_bmps(screencap_image_type, config.image_save_directory);
+						//Video::dump_all_bmps(screenshot_image_type, config.emulator.image_save_directory);
 					}
 					break;
 				case SDLK_F11:
@@ -510,7 +511,7 @@ int main(int argc, char** argv)
 					fs::path rom_path = fs::absolute(config.cart.rom_path);
 					if (rom_path.has_parent_path())
 					{
-						config.image_save_directory = rom_path.parent_path();
+						config.emulator.image_save_directory = rom_path.parent_path();
 					}
 					
 					System::initialize(config);

@@ -27,7 +27,7 @@ constexpr static int PRINT_STATUS_CANCELLED = 3;
 constexpr static int PRINT_STATUS_PAPER_JAM = 4;
 constexpr static int PRINT_STATUS_OVERHEAT = 5;
 
-static fs::path printer_output_dir;
+static fs::path output_dir;
 
 using namespace SH2;
 
@@ -98,7 +98,7 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 	Log::debug("[Printer] data=%08X, palette=%08X, dims=%08X, unkp4=%08X, unkp5=%08X, format=%02X, unkp7=%08X, first=%d",
 		p1_data, p2_palette, p3_dims, p4_unk, p5_unk, p6_format, p7_unk, p8_first);
 	
-	if (printer_output_dir.empty())
+	if (output_dir.empty())
 	{
 		sh2.gpr[0] = PRINT_STATUS_NO_SEAL_CART;
 		return true;
@@ -121,7 +121,7 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 	if ((pixel_double == 0 || pixel_double == 1) && (pixel_format == 1 || pixel_format == 3))
 	{
 		int print_image_type = imagew::get_default_image_type();
-		fs::path print_path = fs::absolute(printer_output_dir) / imagew::make_unique_name("print_");
+		fs::path print_path = fs::absolute(output_dir) / imagew::make_unique_name("print_");
 		print_path += imagew::image_extension(print_image_type);
 
 		if (pixel_format == 3)
@@ -192,7 +192,7 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 
 void initialize(Config::SystemInfo& config)
 {
-	printer_output_dir = config.image_save_directory;
+	output_dir = config.emulator.image_save_directory;
 	
 	SH2::add_hook(ADDR_MOTOR_MOVE, &motor_move_hook);
 	SH2::add_hook(ADDR_PRINT, &print_hook);
@@ -201,7 +201,7 @@ void initialize(Config::SystemInfo& config)
 
 void shutdown()
 {
-	printer_output_dir.clear();
+	output_dir.clear();
 
 	SH2::remove_hook(ADDR_MOTOR_MOVE);
 	SH2::remove_hook(ADDR_PRINT);

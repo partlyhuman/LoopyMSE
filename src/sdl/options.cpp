@@ -89,20 +89,20 @@ void parse_commandline(int argc, char** argv, Args& args)
 }
 
 const std::unordered_map<std::string, Input::PadButton> KEYBOARD_CONFIG_KEY_TO_PAD_ENUM = {
-	{"keyboard_pad_start", Input::PAD_START}, {"keyboard_pad_l1", Input::PAD_L1},
-	{"keyboard_pad_r1", Input::PAD_R1},		  {"keyboard_pad_a", Input::PAD_A},
-	{"keyboard_pad_d", Input::PAD_D},		  {"keyboard_pad_c", Input::PAD_C},
-	{"keyboard_pad_b", Input::PAD_B},		  {"keyboard_pad_up", Input::PAD_UP},
-	{"keyboard_pad_down", Input::PAD_DOWN},	  {"keyboard_pad_left", Input::PAD_LEFT},
-	{"keyboard_pad_right", Input::PAD_RIGHT},
+	{"keyboard-map.pad_start", Input::PAD_START}, 	{"keyboard-map.pad_l1", Input::PAD_L1},
+	{"keyboard-map.pad_r1", Input::PAD_R1},		  	{"keyboard-map.pad_a", Input::PAD_A},
+	{"keyboard-map.pad_d", Input::PAD_D},		  	{"keyboard-map.pad_c", Input::PAD_C},
+	{"keyboard-map.pad_b", Input::PAD_B},		  	{"keyboard-map.pad_up", Input::PAD_UP},
+	{"keyboard-map.pad_down", Input::PAD_DOWN},	  	{"keyboard-map.pad_left", Input::PAD_LEFT},
+	{"keyboard-map.pad_right", Input::PAD_RIGHT},
 };
 const std::unordered_map<std::string, Input::PadButton> CONTROLLER_CONFIG_KEY_TO_PAD_ENUM = {
-	{"controller_pad_start", Input::PAD_START}, {"controller_pad_l1", Input::PAD_L1},
-	{"controller_pad_r1", Input::PAD_R1},		{"controller_pad_a", Input::PAD_A},
-	{"controller_pad_d", Input::PAD_D},			{"controller_pad_c", Input::PAD_C},
-	{"controller_pad_b", Input::PAD_B},			{"controller_pad_up", Input::PAD_UP},
-	{"controller_pad_down", Input::PAD_DOWN},	{"controller_pad_left", Input::PAD_LEFT},
-	{"controller_pad_right", Input::PAD_RIGHT},
+	{"controller-map.pad_start", Input::PAD_START},	{"controller-map.pad_l1", Input::PAD_L1},
+	{"controller-map.pad_r1", Input::PAD_R1},		{"controller-map.pad_a", Input::PAD_A},
+	{"controller-map.pad_d", Input::PAD_D},			{"controller-map.pad_c", Input::PAD_C},
+	{"controller-map.pad_b", Input::PAD_B},			{"controller-map.pad_up", Input::PAD_UP},
+	{"controller-map.pad_down", Input::PAD_DOWN},	{"controller-map.pad_left", Input::PAD_LEFT},
+	{"controller-map.pad_right", Input::PAD_RIGHT},
 };
 
 bool parse_config(fs::path config_path, Args& args)
@@ -113,39 +113,39 @@ bool parse_config(fs::path config_path, Args& args)
 	po::variables_map vm;
 	po::options_description key_options("Keyboard Map");
 	key_options.add_options()
-		("keyboard_pad_start", po::value<std::string>()->default_value("return"), "Start")
-		("keyboard_pad_l1", po::value<std::string>()->default_value("q"), "L1")
-		("keyboard_pad_r1", po::value<std::string>()->default_value("w"), "R1")
-		("keyboard_pad_a", po::value<std::string>()->default_value("z"), "A button")
-		("keyboard_pad_b", po::value<std::string>()->default_value("x"), "B button")
-		("keyboard_pad_c", po::value<std::string>()->default_value("a"), "C button")
-		("keyboard_pad_d", po::value<std::string>()->default_value("s"), "D button")
-		("keyboard_pad_up", po::value<std::string>()->default_value("up"), "D-pad up") 
-		("keyboard_pad_down", po::value<std::string>()->default_value("down"), "D-pad down")
-		("keyboard_pad_left", po::value<std::string>()->default_value("left"), "D-pad left")
-		("keyboard_pad_right", po::value<std::string>()->default_value("right"), "D-pad right");
+		("keyboard-map.pad_start", po::value<std::string>()->default_value("return"), "Start")
+		("keyboard-map.pad_l1", po::value<std::string>()->default_value("q"), "L1")
+		("keyboard-map.pad_r1", po::value<std::string>()->default_value("w"), "R1")
+		("keyboard-map.pad_a", po::value<std::string>()->default_value("z"), "A button")
+		("keyboard-map.pad_b", po::value<std::string>()->default_value("x"), "B button")
+		("keyboard-map.pad_c", po::value<std::string>()->default_value("a"), "C button")
+		("keyboard-map.pad_d", po::value<std::string>()->default_value("s"), "D button")
+		("keyboard-map.pad_up", po::value<std::string>()->default_value("up"), "D-pad up") 
+		("keyboard-map.pad_down", po::value<std::string>()->default_value("down"), "D-pad down")
+		("keyboard-map.pad_left", po::value<std::string>()->default_value("left"), "D-pad left")
+		("keyboard-map.pad_right", po::value<std::string>()->default_value("right"), "D-pad right");
 
 	po::options_description button_options("Controller Map");
 	button_options.add_options()
-		("controller_pad_start", po::value<std::string>()->default_value("start"), "Controller Start")
-		("controller_pad_l1", po::value<std::string>()->default_value("leftshoulder"), "Controller L1")
-		("controller_pad_r1", po::value<std::string>()->default_value("rightshoulder"), "Controller R1")
-		("controller_pad_a", po::value<std::string>()->default_value("a"), "Controller A button")
-		("controller_pad_b", po::value<std::string>()->default_value("b"), "Controller B button")
-		("controller_pad_c", po::value<std::string>()->default_value("y"), "Controller C button")
-		("controller_pad_d", po::value<std::string>()->default_value("x"), "Controller D button")
-		("controller_pad_up", po::value<std::string>()->default_value("dpup"), "Controller D-pad up") 
-		("controller_pad_down", po::value<std::string>()->default_value("dpdown"), "Controller D-pad down")
-		("controller_pad_left", po::value<std::string>()->default_value("dpleft"), "Controller D-pad left")
-		("controller_pad_right", po::value<std::string>()->default_value("dpright"), "Controller D-pad right");
+		("controller-map.pad_start", po::value<std::string>()->default_value("start"), "Controller Start")
+		("controller-map.pad_l1", po::value<std::string>()->default_value("leftshoulder"), "Controller L1")
+		("controller-map.pad_r1", po::value<std::string>()->default_value("rightshoulder"), "Controller R1")
+		("controller-map.pad_a", po::value<std::string>()->default_value("a"), "Controller A button")
+		("controller-map.pad_b", po::value<std::string>()->default_value("b"), "Controller B button")
+		("controller-map.pad_c", po::value<std::string>()->default_value("y"), "Controller C button")
+		("controller-map.pad_d", po::value<std::string>()->default_value("x"), "Controller D button")
+		("controller-map.pad_up", po::value<std::string>()->default_value("dpup"), "Controller D-pad up") 
+		("controller-map.pad_down", po::value<std::string>()->default_value("dpdown"), "Controller D-pad down")
+		("controller-map.pad_left", po::value<std::string>()->default_value("dpleft"), "Controller D-pad left")
+		("controller-map.pad_right", po::value<std::string>()->default_value("dpright"), "Controller D-pad right");
 
-	po::options_description emu_options("Emulation");
+	po::options_description emu_options("Emulator");
 	emu_options.add_options()
-		("bios", po::value<std::string>()->default_value("bios.bin"), "BIOS file")
-		("sound_bios", po::value<std::string>()->default_value("soundbios.bin"), "Sound BIOS file")
-		("run_in_background", po::value<bool>()->default_value(false), "Continue emulation while window not focused")
-		("start_in_fullscreen", po::value<bool>()->default_value(false), "Default to fullscreen mode")
-		("int_scale", po::value<int>()->default_value(3), "Integer scale");
+		("emulator.bios", po::value<std::string>()->default_value("bios.bin"), "BIOS file")
+		("emulator.sound_bios", po::value<std::string>()->default_value("soundbios.bin"), "Sound BIOS file")
+		("emulator.run_in_background", po::value<bool>()->default_value(false), "Continue emulation while window not focused")
+		("emulator.start_in_fullscreen", po::value<bool>()->default_value(false), "Default to fullscreen mode")
+		("emulator.int_scale", po::value<int>()->default_value(3), "Integer scale")
 
 	po::options_description options;
 	options.add(key_options).add(button_options).add(emu_options);
@@ -161,11 +161,11 @@ bool parse_config(fs::path config_path, Args& args)
 		po::store(po::parse_config_file(config_path.string().c_str(), options, true), vm);
 		po::notify(vm);
 
-		args.bios = vm["bios"].as<std::string>();
-		args.sound_bios = vm["sound_bios"].as<std::string>();
-		args.run_in_background = vm["run_in_background"].as<bool>();
-		args.start_in_fullscreen = vm["start_in_fullscreen"].as<bool>();
-		args.int_scale = vm["int_scale"].as<int>();
+		args.bios = vm["emulator.bios"].as<std::string>();
+		args.sound_bios = vm["emulator.sound_bios"].as<std::string>();
+		args.run_in_background = vm["emulator.run_in_background"].as<bool>();
+		args.start_in_fullscreen = vm["emulator.start_in_fullscreen"].as<bool>();
+		args.int_scale = vm["emulator.int_scale"].as<int>();
 
 		// Keymap
 		for (const auto& [cfg_key, pad_key] : KEYBOARD_CONFIG_KEY_TO_PAD_ENUM)
