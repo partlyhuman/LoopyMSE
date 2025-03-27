@@ -31,13 +31,6 @@ static fs::path printer_output_dir;
 
 using namespace SH2;
 
-// void show_print_messagebox(std::string print_path)
-// {
-// 	char message[512];
-// 	snprintf(message, sizeof(message), "Your print has been saved to %s", print_path.c_str());
-// 	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "LoopyMSE", (const char*)message, NULL);
-// }
-
 void show_print_file(fs::path print_path)
 {
 	std::stringstream cmd;
@@ -123,7 +116,7 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 	//TODO: is there more complex logic to this?
 	height = std::min(height, (uint32_t)(pixel_double == 1 ? 112 : 224));
 
-	Log::info("[Printer] size=%dx%d, format=%d:%d", width, height, pixel_double, pixel_format);
+	Log::info("[Printer] size=%dx%d, pixel_format=%d, pixel_double=%d", width, height, pixel_double, pixel_format, pixel_double);
 
 	if ((pixel_double == 0 || pixel_double == 1) && (pixel_format == 1 || pixel_format == 3))
 	{
@@ -183,12 +176,12 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 		}
 		else
 		{
-			Log::info("[Printer] failed to open %s", print_path.string().c_str());
+			Log::warn("[Printer] failed to open %s", print_path.string().c_str());
 		}
 	}
 	else
 	{
-		Log::info("[Printer] unknown format %d:%d, aborting", pixel_double, pixel_format);
+		Log::warn("[Printer] unknown mode, aborting");
 		print_success = false;
 	}
 

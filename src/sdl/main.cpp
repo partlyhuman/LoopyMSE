@@ -298,7 +298,7 @@ int main(int argc, char** argv)
 	if (!result)
 	{
 		Log::error(
-			"Error: Missing BIOS file. Provide by argument, or place in %s.\n", (PREFS_PATH / DEFAULT_BIOS_PATH).c_str()
+			"Error: Missing BIOS file. Provide by argument, or place at %s.\n", (PREFS_PATH / DEFAULT_BIOS_PATH).string().c_str()
 		);
 
 		Options::print_usage();
@@ -317,9 +317,9 @@ int main(int argc, char** argv)
 	if (!result)
 	{
 		Log::warn(
-			"Missing sound bios file. Provide by argument, or place in %s.\n"
+			"Missing sound bios file. Provide by argument, or place at %s.\n"
 			"Emulation will continue without sound.\n",
-			DEFAULT_SOUND_BIOS_PATH.c_str()
+			DEFAULT_SOUND_BIOS_PATH.string().c_str()
 		);
 	}
 
