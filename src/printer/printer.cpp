@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <sstream>
+#include <thread>
 #include <vector>
 
 #include <common/imgwriter.h>
@@ -34,6 +35,11 @@ static std::string view_command;
 
 using namespace SH2;
 
+void system_threadwrapper(std::string command)
+{
+	system(command.c_str());
+}
+
 void show_print_file(fs::path print_path)
 {
 	if (view_command.empty() || print_path.empty()) return;
@@ -59,7 +65,8 @@ void show_print_file(fs::path print_path)
 		if (has_command)
 		{
 			Log::info("[Printer] trying to open print in default viewer...");
-			system(cmd.str().c_str());
+			std::thread t1(system_threadwrapper, cmd.str());
+			t1.detach();
 		}
 		else
 		{
@@ -68,28 +75,33 @@ void show_print_file(fs::path print_path)
 		return;
 	}
 
-	std::string file_placeholder = "$1";
-	size_t file_pos = view_command.find(file_placeholder);
+	std::string file_placeholder = "$FILE";
 
-#ifdef _WIN32
-	cmd << "start ";
-#endif
+	std::stringstream print_path_quoted_tmp;
+	print_path_quoted_tmp << print_path;
+	std::string print_path_quoted = print_path_quoted_tmp.str();
 
-	if (file_pos == std::string::npos)
+	std::string view_command_sub = view_command;
+	bool has_placeholder = false;
+
+	// Replace placeholder with quoted path
+	size_t placeholder_pos = view_command_sub.find(file_placeholder);
+	while (placeholder_pos != std::string::npos)
 	{
-		cmd << view_command << " " << print_path;
+		has_placeholder = true;
+		view_command_sub.replace(placeholder_pos, file_placeholder.length(), print_path_quoted);
+		placeholder_pos = view_command_sub.find(file_placeholder, placeholder_pos + print_path_quoted.length());
 	}
-	else
+
+	cmd << view_command_sub;
+	if (!has_placeholder)
 	{
-		cmd << view_command.substr(0, file_pos) << print_path << view_command.substr(file_pos + file_placeholder.length());
+		cmd << " " << print_path_quoted;
 	}
 
-#ifndef _WIN32
-	cmd << " &";
-#endif
-
-	Log::info("[Printer] trying to open print with the following command: %s", cmd.str().c_str());	
-	system(cmd.str().c_str());
+	Log::info("[Printer] trying to open print with your specified view command...");	
+	std::thread t1(system_threadwrapper, cmd.str());
+	t1.detach();
 }
 
 template <typename T>
@@ -147,7 +159,7 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 	//TODO: is there more complex logic to this?
 	height = std::min(height, (uint32_t)(pixel_double == 1 ? 112 : 224));
 
-	Log::info("[Printer] size=%dx%d, pixel_format=%d, pixel_double=%d", width, height, pixel_double, pixel_format, pixel_double);
+	Log::info("[Printer] size=%dx%d, pixel_format=%d, pixel_double=%d", width, height, pixel_format, pixel_double);
 
 	if ((pixel_double == 0 || pixel_double == 1) && (pixel_format == 1 || pixel_format == 3))
 	{
@@ -202,7 +214,6 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 		{
 			Log::info("[Printer] saved print to %s", print_path.string().c_str());
 			show_print_file(print_path);
-			//show_print_messagebox(print_path.string());
 		}
 		else
 		{
