@@ -4,6 +4,6 @@
 namespace SH2::Interpreter
 {
 
-void run(uint16_t instr);
+void run(uint16_t instr, uint32_t src_addr);
 
 }

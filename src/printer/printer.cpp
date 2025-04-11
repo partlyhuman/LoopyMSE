@@ -118,17 +118,23 @@ std::vector<T> double_pixel_data(std::vector<T> data, uint32_t width, uint32_t h
 	return data_doubled;
 }
 
-bool motor_move_hook(uint32_t src_addr, uint32_t dst_addr)
+bool motor_move_hook(uint32_t addr)
 {
+	if (addr != ADDR_MOTOR_MOVE) return false;
 	//Hook slow moving printer function and skip it for faster boot
+
+	//We're at 1B7A executing 1B76; jump to 15FA to exit function immediately
 	Log::info("[Printer] skipping motor move...");
+	sh2.pc = 0x15FA;
+	sh2.pipeline_valid = false;
 	return true;
 }
 
-bool print_hook(uint32_t src_addr, uint32_t dst_addr)
+bool print_hook(uint32_t addr)
 {
+	if (addr != ADDR_PRINT) return false;
 	//Hook the BIOS print function
-	Log::debug("[Printer] function %04X called from %08X", dst_addr, src_addr);
+
 	uint32_t sp = sh2.gpr[15];
 	uint32_t p1_data    = Bus::read32(sh2.gpr[4]);
 	uint32_t p2_palette = Bus::read32(sh2.gpr[5]);
@@ -163,8 +169,9 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 
 	if ((pixel_double == 0 || pixel_double == 1) && (pixel_format == 1 || pixel_format == 3))
 	{
-		fs::path print_path = fs::absolute(output_dir) / imagew::make_unique_name("print_");
-		print_path += imagew::image_extension(output_type);
+		fs::path print_name = imagew::make_unique_name("print_");
+		print_name += imagew::image_extension(output_type);
+		fs::path print_path = fs::absolute(output_dir) / print_name;
 
 		if (pixel_format == 3)
 		{
@@ -212,12 +219,12 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 
 		if (print_success)
 		{
-			Log::info("[Printer] saved print to %s", print_path.string().c_str());
+			Log::info("[Printer] saved print to %s", print_name.string().c_str());
 			show_print_file(print_path);
 		}
 		else
 		{
-			Log::warn("[Printer] failed to open %s", print_path.string().c_str());
+			Log::warn("[Printer] failed to open %s", print_name.string().c_str());
 		}
 	}
 	else
@@ -227,8 +234,12 @@ bool print_hook(uint32_t src_addr, uint32_t dst_addr)
 	}
 
 	//Return from print function with success or paper-out status
+
+	//We're at 6D8 executing 6D4; set return code and jump to FD2 to exit function immediately
 	sh2.gpr[0] = print_success ? PRINT_STATUS_SUCCESS : PRINT_STATUS_GENERAL_FAILURE;
-	return true;
+	sh2.pc = 0xFD2;
+	sh2.pipeline_valid = false;
+	return false;
 }
 
 void initialize(Config::SystemInfo& config)

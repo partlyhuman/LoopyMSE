@@ -147,23 +147,39 @@ void run()
 			handle_exception();
 
 			//Start the next fetch with the current PC
-			uint16_t fetch_instruction = Bus::read16(sh2.pc);
-			sh2.fetch_cycles = Bus::read_cycles(sh2.pc);
+			uint32_t fetch_src_addr = sh2.pc;
+			uint16_t fetch_instruction = Bus::read16(fetch_src_addr);
+			sh2.fetch_cycles = Bus::read_cycles(fetch_src_addr);
 			sh2.fetch_done = false;
 			
 			//Advance the pipeline
+			uint32_t execute_src_addr = sh2.pipeline_src_addr;
 			uint16_t execute_instruction = sh2.pipeline_instruction;
 			bool execute_valid = sh2.pipeline_valid;
+			sh2.pipeline_src_addr = fetch_src_addr;
 			sh2.pipeline_instruction = fetch_instruction;
 			sh2.pipeline_valid = true;
 			sh2.pc += 2;
+
+			//Find and run the hook function at this address
+			//TODO: split into smaller paged maps for performance
+			if (sh2.branch_hooks.find(execute_src_addr) != sh2.branch_hooks.end())
+			{
+				SH2::BranchHookFunc hook = sh2.branch_hooks.at(execute_src_addr);
+				
+				//If hook returns true, the actual instruction is skipped
+				if (hook(execute_src_addr))
+				{
+					execute_valid = false;
+				}
+			}
 
 			//Execute whatever just came off the pipeline
 			bool was_delay_slot = sh2.in_delay_slot;
 			bool was_nointerrupt_slot = sh2.in_nointerrupt_slot;
 			if (execute_valid)
 			{
-				SH2::Interpreter::run(execute_instruction);
+				SH2::Interpreter::run(execute_instruction, execute_src_addr);
 			}
 			//This should probably be done more directly in the interpreter
 			if (was_delay_slot)

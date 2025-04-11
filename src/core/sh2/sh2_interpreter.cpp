@@ -41,35 +41,6 @@ static void handle_jump(uint32_t dst, bool delay_slot)
 {
 	//TODO: raise an exception if this function is called within a delay slot
 
-	//uint32_t src = sh2.pc - 4;
-
-	//Small hack: if in a delay slot, immediately execute the next instruction
-	//if (delay_slot)
-	//{
-	//	//Fetch from old location and execute at new location
-	//	sh2.pc += 2;
-	//	
-	//	uint16_t instr = Bus::read16(sh2.pc - 4);
-	//	sh2.pc = dst + 2;
-	//	run(instr);
-	//}
-
-	//Find and run the hook function for branches at this address
-	//TODO: split into smaller paged maps if we expect more than a few hooks
-	//if (sh2.branch_hooks.find(dst) != sh2.branch_hooks.end())
-	//{
-	//	SH2::BranchHookFunc hook = sh2.branch_hooks.at(dst);
-	//	
-	//	//If hook returns true, replace the branch entirely and continue execution after
-	//	//Otherwise continue and apply new PC as normal
-	//	if (hook(src, dst))
-	//	{
-	//		sh2.pc = src + 2;
-	//		if (delay_slot) sh2.pc += 2;
-	//		return;
-	//	}
-	//}
-
 	sh2.pc = dst;
 	if (delay_slot)
 	{
@@ -1181,7 +1152,7 @@ static void stsl_mem_dec(uint16_t instr)
 	Bus::write32(sh2.gpr[mem], get_system_reg(reg));
 }
 
-void run(uint16_t instr)
+void run(uint16_t instr, uint32_t src_addr)
 {
 	//TODO: convert the decoding into a compile-time generated LUT
 	if ((instr & 0xF000) == 0xE000)
@@ -1634,7 +1605,7 @@ void run(uint16_t instr)
 	}
 	else
 	{
-		Log::error("[SH2] unrecognized instr %04X before %08X", instr, sh2.pc);
+		Log::error("[SH2] unrecognized instr %04X at %08X", instr, src_addr);
 		assert(0);
 	}
 }

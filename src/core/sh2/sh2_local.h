@@ -5,7 +5,7 @@
 namespace SH2
 {
 
-typedef bool (*BranchHookFunc)(uint32_t, uint32_t);
+typedef bool (*BranchHookFunc)(uint32_t);
 
 struct CPU
 {
@@ -28,6 +28,7 @@ struct CPU
 	bool fetch_done;
 	int fetch_cycles;
 
+	uint32_t pipeline_src_addr;
 	uint16_t pipeline_instruction;
 	bool pipeline_valid;
 
