@@ -161,4 +161,56 @@ void write32(uint32_t addr, uint32_t value)
 	MMIO_ACCESS(write32, addr, value);
 }
 
+int read_cycles(uint32_t addr)
+{
+	//TODO: some depend on wait-state config, DRAM refresh etc. Check appropriately.
+	//Maybe also use each module's mapped address instead of hardcoded areas, for now it's too hard.
+
+	int base_cycles = 1;
+	int wait_cycles = 0;
+
+	addr = translate_addr(addr);
+
+	switch (addr >> 24)
+	{
+		case 0x0: //BIOS
+			base_cycles = 1;
+			break;
+		case 0x1: //DRAM
+			base_cycles =  1; //TODO: check refresh cycles
+			break;
+		case 0x2: //CARTRAM
+			base_cycles = 3;
+			break;
+		case 0x4: //VDP & MMIO
+			base_cycles = 2;
+			wait_cycles = 1;
+			if ((addr & 0x3FFFFF) >= 0x58000)
+			{
+				wait_cycles = 2;
+			}
+			break;
+		case 0x5: //SH peripherals
+			base_cycles = 3;
+			break;
+		case 0x6: //CARTROM
+			base_cycles = 3;
+			break;
+		case 0xF: //ORAM (unmirrored)
+			base_cycles = 1;
+			break;
+		default:
+			break;
+	}
+
+	return base_cycles + wait_cycles;
+}
+
+int write_cycles(uint32_t addr)
+{
+	//TODO: some depend on wait-state config, DRAM refresh etc. Check appropriately.
+	//May be different from read cycles.
+	return read_cycles(addr);
+}
+
 }  // namespace SH2::Bus

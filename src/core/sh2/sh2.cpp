@@ -148,10 +148,8 @@ void run()
 
 			//Start the next fetch with the current PC
 			uint16_t fetch_instruction = Bus::read16(sh2.pc);
+			sh2.fetch_cycles = Bus::read_cycles(sh2.pc);
 			sh2.fetch_done = false;
-			//Hack to make fetch take 2-3 cycles, a lot closer to realistic speed
-			//until we have memory-region-dependent fetch delays.
-			sh2.fetch_cycles = 2 + ((sh2.cycles_left >> 2) & 1);
 			
 			//Advance the pipeline
 			uint16_t execute_instruction = sh2.pipeline_instruction;
