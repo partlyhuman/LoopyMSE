@@ -20,32 +20,61 @@ namespace SH2
 
 CPU sh2;
 
-static Timing::FuncHandle irq_func;
-static Timing::EventHandle irq_ev;
-
-static bool can_exec_irq(int prio)
+static bool can_accept_exception(int vector_id, int prio)
 {
 	int imask = (sh2.sr >> 4) & 0xF;
+	if (imask == 0xF)
+	{
+		return false;
+	}
 	return prio > imask;
 }
 
-static void handle_irq(uint64_t param, int cycles_late)
+static bool can_execute_exception(int vector_id, int prio)
 {
-	int prio = param & 0xFF;
-	int vector = param >> 8;
+	//Some types not accepted after certain instructions (SH7021 datasheet tables 4.9 & 4.2)
+	bool is_address_error = (vector_id >= 9 && vector_id <= 10);
+	bool is_interrupt = (vector_id >= 11 && vector_id <= 12) || (vector_id >= 64);
 
-	if (!can_exec_irq(prio))
+	//Our implementation of the pipeline explodes if we allow any exception
+	//right after the pipeline became invalid. This fixes it.
+	if (!sh2.pipeline_valid)
 	{
-		return;
+		return false;
+	}
+	if (sh2.in_delay_slot && (is_address_error || is_interrupt))
+	{
+		return false;
+	}
+	if (sh2.in_nointerrupt_slot && is_interrupt)
+	{
+		return false;
 	}
 
-	raise_exception(vector);
+	return true;
+}
 
-	int new_imask = std::clamp(prio, 0, 15);
+static bool handle_exception()
+{
+	if (sh2.pending_exception_vector)
+	{
+		int vector = sh2.pending_exception_vector;
+		int prio = sh2.pending_exception_prio;
+		if (can_execute_exception(vector, prio))
+		{
+			raise_exception(vector);
+		
+			int new_imask = std::clamp(prio, 0, 15);
+		
+			//Interrupt mask should only be modified after the above function so that the original value can be pushed onto the stack
+			sh2.sr &= ~0xF0;
+			sh2.sr |= new_imask << 4;
 
-	//Interrupt mask should only be modified after the above function so that the original value can be pushed onto the stack
-	sh2.sr &= ~0xF0;
-	sh2.sr |= new_imask << 4;
+			sh2.pending_exception_vector = 0;
+			return true;
+		}
+	}
+	return false;
 }
 
 void initialize()
@@ -77,9 +106,13 @@ void initialize()
 	sh2.vbr = 0;
 	sh2.sr |= 0xF << 4;
 
-	Timing::register_timer(Timing::CPU_TIMER, &sh2.cycles_left, run);
+	//Initialize pipeline & execution state
+	sh2.pipeline_valid = false;
+	sh2.in_delay_slot = false;
+	sh2.in_nointerrupt_slot = false;
+	sh2.fetch_cycles = 1;
 
-	irq_func = Timing::register_func("SH2::handle_irq", handle_irq);
+	Timing::register_timer(Timing::CPU_TIMER, &sh2.cycles_left, run);
 
 	//Set up on-chip peripheral modules after CPU is done
 	OCPM::DMAC::initialize();
@@ -97,13 +130,52 @@ void run()
 {
 	while (sh2.cycles_left)
 	{
-		//Hack to make each instruction take 2-3 cycles, a lot closer to realistic speed
-		//until we have a proper pipeline and memory-region-dependent fetch delays.
-		if ((sh2.cycles_left % 5) < 2)
+		bool last_instruction_done = true; //TODO: wait on longer instructions like multiply
+
+		sh2.fetch_cycles -= 1;
+		if (sh2.fetch_cycles <= 0)
 		{
-			uint16_t instr = Bus::read16(sh2.pc - 4);
-			SH2::Interpreter::run(instr);
+			sh2.fetch_cycles = 0;
+			sh2.fetch_done = true;
+		}
+
+		bool pipeline_ready = sh2.fetch_done && last_instruction_done;
+		
+		if (pipeline_ready)
+		{
+			//Handle any pending exceptions first, this may change the following fetch
+			handle_exception();
+
+			//Start the next fetch with the current PC
+			uint16_t fetch_instruction = Bus::read16(sh2.pc);
+			sh2.fetch_done = false;
+			//Hack to make fetch take 2-3 cycles, a lot closer to realistic speed
+			//until we have memory-region-dependent fetch delays.
+			sh2.fetch_cycles = 2 + ((sh2.cycles_left >> 2) & 1);
+			
+			//Advance the pipeline
+			uint16_t execute_instruction = sh2.pipeline_instruction;
+			bool execute_valid = sh2.pipeline_valid;
+			sh2.pipeline_instruction = fetch_instruction;
+			sh2.pipeline_valid = true;
 			sh2.pc += 2;
+
+			//Execute whatever just came off the pipeline
+			bool was_delay_slot = sh2.in_delay_slot;
+			bool was_nointerrupt_slot = sh2.in_nointerrupt_slot;
+			if (execute_valid)
+			{
+				SH2::Interpreter::run(execute_instruction);
+			}
+			//This should probably be done more directly in the interpreter
+			if (was_delay_slot)
+			{
+				sh2.in_delay_slot = false;
+			}
+			if (was_nointerrupt_slot)
+			{
+				sh2.in_nointerrupt_slot = false;
+			}
 		}
 		sh2.cycles_left -= 1;
 	}
@@ -111,21 +183,12 @@ void run()
 
 void assert_irq(int vector_id, int prio)
 {
-	sh2.pending_irq_vector = vector_id;
-	sh2.pending_irq_prio = prio;
-	irq_check();
-}
-
-void irq_check()
-{
-	if (!can_exec_irq(sh2.pending_irq_prio))
+	if (!can_accept_exception(vector_id, prio))
 	{
 		return;
 	}
-
-	//Ensure the interrupt occurs after the CPU has executed
-	uint64_t param = sh2.pending_irq_prio | (sh2.pending_irq_vector << 8);
-	Timing::add_event(irq_func, Timing::convert_cpu(1), param, Timing::CPU_TIMER);
+	sh2.pending_exception_vector = vector_id;
+	sh2.pending_exception_prio = prio;
 }
 
 void raise_exception(int vector_id)
@@ -136,24 +199,23 @@ void raise_exception(int vector_id)
 	sh2.gpr[15] -= 4;
 	Bus::write32(sh2.gpr[15], sh2.sr);
 	sh2.gpr[15] -= 4;
-	Bus::write32(sh2.gpr[15], sh2.pc - 4);
+	Bus::write32(sh2.gpr[15], sh2.pc - 2);
 
 	uint32_t vector_addr = sh2.vbr + (vector_id * 4);
 	uint32_t new_pc = Bus::read32(vector_addr);
 
 	set_pc(new_pc);
+	sh2.pipeline_valid = false;
 }
 
 void set_pc(uint32_t new_pc)
 {
-	//Needs to be + 4 to account for pipelining
-	sh2.pc = new_pc + 4;
+	sh2.pc = new_pc;
 }
 
 void set_sr(uint32_t new_sr)
 {
 	sh2.sr = new_sr & 0x3F3;
-	irq_check();
 }
 
 void add_hook(uint32_t address, BranchHookFunc hook)

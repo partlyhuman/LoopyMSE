@@ -41,40 +41,49 @@ static void handle_jump(uint32_t dst, bool delay_slot)
 {
 	//TODO: raise an exception if this function is called within a delay slot
 
-	uint32_t src = sh2.pc - 4;
+	//uint32_t src = sh2.pc - 4;
 
 	//Small hack: if in a delay slot, immediately execute the next instruction
-	if (delay_slot)
-	{
-		//Fetch from old location and execute at new location
-		sh2.pc += 2;
-		
-		uint16_t instr = Bus::read16(sh2.pc - 4);
-		sh2.pc = dst + 2;
-		run(instr);
-	}
+	//if (delay_slot)
+	//{
+	//	//Fetch from old location and execute at new location
+	//	sh2.pc += 2;
+	//	
+	//	uint16_t instr = Bus::read16(sh2.pc - 4);
+	//	sh2.pc = dst + 2;
+	//	run(instr);
+	//}
 
 	//Find and run the hook function for branches at this address
 	//TODO: split into smaller paged maps if we expect more than a few hooks
-	if (sh2.branch_hooks.find(dst) != sh2.branch_hooks.end())
-	{
-		SH2::BranchHookFunc hook = sh2.branch_hooks.at(dst);
-		
-		//If hook returns true, replace the branch entirely and continue execution after
-		//Otherwise continue and apply new PC as normal
-		if (hook(src, dst))
-		{
-			sh2.pc = src + 2;
-			if (delay_slot) sh2.pc += 2;
-			return;
-		}
-	}
+	//if (sh2.branch_hooks.find(dst) != sh2.branch_hooks.end())
+	//{
+	//	SH2::BranchHookFunc hook = sh2.branch_hooks.at(dst);
+	//	
+	//	//If hook returns true, replace the branch entirely and continue execution after
+	//	//Otherwise continue and apply new PC as normal
+	//	if (hook(src, dst))
+	//	{
+	//		sh2.pc = src + 2;
+	//		if (delay_slot) sh2.pc += 2;
+	//		return;
+	//	}
+	//}
 
-	sh2.pc = dst + 2;
+	sh2.pc = dst;
+	if (delay_slot)
+	{
+		sh2.in_delay_slot = true;
+	}
+	else
+	{
+		sh2.pipeline_valid = false;
+	}
 }
 
 static uint32_t get_control_reg(int index)
 {
+	sh2.in_nointerrupt_slot = true;
 	switch (index)
 	{
 	case 0:
@@ -91,6 +100,7 @@ static uint32_t get_control_reg(int index)
 
 static void set_control_reg(int index, uint32_t value)
 {
+	sh2.in_nointerrupt_slot = true;
 	switch (index)
 	{
 	case 0:
@@ -109,6 +119,7 @@ static void set_control_reg(int index, uint32_t value)
 
 static uint32_t get_system_reg(int index)
 {
+	sh2.in_nointerrupt_slot = true;
 	switch (index)
 	{
 	case 0:
@@ -125,6 +136,7 @@ static uint32_t get_system_reg(int index)
 
 static void set_system_reg(int index, uint32_t value)
 {
+	sh2.in_nointerrupt_slot = true;
 	switch (index)
 	{
 	case 0:
@@ -1622,7 +1634,7 @@ void run(uint16_t instr)
 	}
 	else
 	{
-		Log::error("[SH2] unrecognized instr %04X at %08X", instr, sh2.pc - 4);
+		Log::error("[SH2] unrecognized instr %04X before %08X", instr, sh2.pc);
 		assert(0);
 	}
 }

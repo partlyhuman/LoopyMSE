@@ -18,18 +18,26 @@ struct CPU
 
 	int32_t cycles_left;
 
-	int pending_irq_prio;
-	int pending_irq_vector;
+	int pending_exception_prio;
+	int pending_exception_vector;
 
 	uint8_t** pagetable;
 
 	std::unordered_map<uint32_t, BranchHookFunc> branch_hooks;
+
+	bool fetch_done;
+	int fetch_cycles;
+
+	uint16_t pipeline_instruction;
+	bool pipeline_valid;
+
+	bool in_delay_slot;
+	bool in_nointerrupt_slot;
 };
 
 extern CPU sh2;
 
 void assert_irq(int vector_id, int prio);
-void irq_check();
 void raise_exception(int vector_id);
 void set_pc(uint32_t new_pc);
 void set_sr(uint32_t new_sr);
