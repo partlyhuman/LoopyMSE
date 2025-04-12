@@ -129,7 +129,7 @@ void initialize()
 
 void shutdown()
 {
-	sh2.branch_hooks.clear();
+	sh2.hooks.clear();
 }
 
 void run()
@@ -169,9 +169,9 @@ void run()
 
 			//Find and run the hook function at this address
 			//TODO: split into smaller paged maps for performance
-			if (sh2.branch_hooks.find(execute_src_addr) != sh2.branch_hooks.end())
+			if (sh2.hooks.find(execute_src_addr) != sh2.hooks.end())
 			{
-				SH2::BranchHookFunc hook = sh2.branch_hooks.at(execute_src_addr);
+				SH2::HookFunc hook = sh2.hooks.at(execute_src_addr);
 				
 				//If hook returns true, the actual instruction is skipped
 				if (hook(execute_src_addr))
@@ -238,14 +238,14 @@ void set_sr(uint32_t new_sr)
 	sh2.sr = new_sr & 0x3F3;
 }
 
-void add_hook(uint32_t address, BranchHookFunc hook)
+void add_hook(uint32_t address, HookFunc hook)
 {
-	sh2.branch_hooks.emplace(address, hook);
+	sh2.hooks.emplace(address, hook);
 }
 
 void remove_hook(uint32_t address)
 {
-	sh2.branch_hooks.erase(address);
+	sh2.hooks.erase(address);
 }
 
 }

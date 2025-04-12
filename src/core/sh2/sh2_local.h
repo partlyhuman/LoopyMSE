@@ -5,7 +5,7 @@
 namespace SH2
 {
 
-typedef bool (*BranchHookFunc)(uint32_t);
+typedef bool (*HookFunc)(uint32_t);
 
 struct CPU
 {
@@ -23,7 +23,7 @@ struct CPU
 
 	uint8_t** pagetable;
 
-	std::unordered_map<uint32_t, BranchHookFunc> branch_hooks;
+	std::unordered_map<uint32_t, HookFunc> hooks;
 
 	bool fetch_done;
 	int fetch_cycles;
@@ -42,7 +42,7 @@ void assert_irq(int vector_id, int prio);
 void set_pc(uint32_t new_pc);
 void set_sr(uint32_t new_sr);
 
-void add_hook(uint32_t address, BranchHookFunc hook);
+void add_hook(uint32_t address, HookFunc hook);
 void remove_hook(uint32_t address);
 
 }

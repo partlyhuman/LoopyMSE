@@ -19,8 +19,12 @@ namespace imagew = Common::ImageWriter;
 namespace Printer
 {
 
+constexpr static bool DELAYED_RETURN = true;
+
 constexpr static uint32_t ADDR_MOTOR_MOVE = 0x00001B76;
+constexpr static uint32_t ADDR_MOTOR_MOVE_RETURN = 0x000015FA;
 constexpr static uint32_t ADDR_PRINT = 0x000006D4;
+constexpr static uint32_t ADDR_PRINT_RETURN = 0x00000FD2;
 
 constexpr static int PRINT_STATUS_SUCCESS = 0;
 constexpr static int PRINT_STATUS_GENERAL_FAILURE = 1;
@@ -32,6 +36,8 @@ constexpr static int PRINT_STATUS_OVERHEAT = 5;
 static fs::path output_dir;
 static int output_type;
 static std::string view_command;
+
+static fs::path last_printed_path;
 
 using namespace SH2;
 
@@ -120,20 +126,20 @@ std::vector<T> double_pixel_data(std::vector<T> data, uint32_t width, uint32_t h
 
 bool motor_move_hook(uint32_t addr)
 {
-	if (addr != ADDR_MOTOR_MOVE) return false;
 	//Hook slow moving printer function and skip it for faster boot
+	if (addr != ADDR_MOTOR_MOVE) return false;
 
-	//We're at 1B7A executing 1B76; jump to 15FA to exit function immediately
+	//Go to end of function (rts / _nop) skipping this instruction
 	Log::info("[Printer] skipping motor move...");
-	sh2.pc = 0x15FA;
+	sh2.pc = ADDR_MOTOR_MOVE_RETURN;
 	sh2.pipeline_valid = false;
 	return true;
 }
 
 bool print_hook(uint32_t addr)
 {
+	//Hook the BIOS print function entry point
 	if (addr != ADDR_PRINT) return false;
-	//Hook the BIOS print function
 
 	uint32_t sp = sh2.gpr[15];
 	uint32_t p1_data    = Bus::read32(sh2.gpr[4]);
@@ -149,11 +155,15 @@ bool print_hook(uint32_t addr)
 	
 	if (output_dir.empty())
 	{
+		//Nowhere to save; return no-seal status, go to end of function (rts / _mov.l) after this instruction
 		sh2.gpr[0] = PRINT_STATUS_NO_SEAL_CART;
-		return true;
+		sh2.pc = ADDR_PRINT_RETURN;
+		sh2.pipeline_valid = false;
+		return false;
 	}
 	
-	bool print_success;
+	bool print_success = false;
+	last_printed_path.clear();
 
 	// Dump the data to be printed
 	uint32_t width = p3_dims & 0xFFFF;
@@ -219,8 +229,12 @@ bool print_hook(uint32_t addr)
 
 		if (print_success)
 		{
+			last_printed_path = print_path;
 			Log::info("[Printer] saved print to %s", print_name.string().c_str());
-			show_print_file(print_path);
+			if (!DELAYED_RETURN)
+			{
+				show_print_file(print_path);
+			}
 		}
 		else
 		{
@@ -233,12 +247,31 @@ bool print_hook(uint32_t addr)
 		print_success = false;
 	}
 
-	//Return from print function with success or paper-out status
+	if (print_success && DELAYED_RETURN)
+	{
+		//Continue the real function; replace return value with success later in return hook
+		return false;
+	}
 
-	//We're at 6D8 executing 6D4; set return code and jump to FD2 to exit function immediately
+	//Return appropriate status, go to end of function (rts / _mov.l) after this instruction
 	sh2.gpr[0] = print_success ? PRINT_STATUS_SUCCESS : PRINT_STATUS_GENERAL_FAILURE;
-	sh2.pc = 0xFD2;
+	sh2.pc = ADDR_PRINT_RETURN;
 	sh2.pipeline_valid = false;
+	return false;
+}
+
+bool print_return_hook(uint32_t addr)
+{
+	//Hook just before the BIOS print function exit point
+	if (addr != (ADDR_PRINT_RETURN - 2)) return false;
+
+	if (!last_printed_path.empty())
+	{
+		show_print_file(last_printed_path);
+	}
+
+	//Return success status, continue execution
+	sh2.gpr[0] = PRINT_STATUS_SUCCESS;
 	return false;
 }
 
@@ -253,6 +286,10 @@ void initialize(Config::SystemInfo& config)
 
 	SH2::add_hook(ADDR_MOTOR_MOVE, &motor_move_hook);
 	SH2::add_hook(ADDR_PRINT, &print_hook);
+	if (DELAYED_RETURN)
+	{
+		SH2::add_hook(ADDR_PRINT_RETURN - 2, &print_return_hook);
+	}
 	Log::debug("[Printer] registered hooks for print and motor-move BIOS calls");
 }
 
@@ -262,6 +299,10 @@ void shutdown()
 
 	SH2::remove_hook(ADDR_MOTOR_MOVE);
 	SH2::remove_hook(ADDR_PRINT);
+	if (DELAYED_RETURN)
+	{
+		SH2::remove_hook(ADDR_PRINT_RETURN - 2);
+	}
 	Log::debug("[Printer] unregistered hooks");
 }
 
