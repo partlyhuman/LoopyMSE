@@ -25,6 +25,8 @@ add_library (core STATIC
 			 "sh2/peripherals/sh2_intc.h"
 			 "sh2/peripherals/sh2_ocpm.cpp"
 			 "sh2/peripherals/sh2_ocpm.h"
+			 "sh2/peripherals/sh2_pfc.cpp"
+			 "sh2/peripherals/sh2_pfc.h"
 			 "sh2/peripherals/sh2_timers.cpp"
 			 "sh2/peripherals/sh2_timers.h"
 			 "sh2/peripherals/sh2_serial.cpp"

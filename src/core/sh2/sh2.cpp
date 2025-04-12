@@ -2,10 +2,13 @@
 #include <cassert>
 #include <cstring>
 
+#include <log/log.h>
+
 #include <common/bswp.h>
 
 #include "core/sh2/peripherals/sh2_dmac.h"
 #include "core/sh2/peripherals/sh2_intc.h"
+#include "core/sh2/peripherals/sh2_pfc.h"
 #include "core/sh2/peripherals/sh2_serial.h"
 #include "core/sh2/peripherals/sh2_timers.h"
 #include "core/sh2/sh2.h"
@@ -119,6 +122,7 @@ void initialize()
 	//Set up on-chip peripheral modules after CPU is done
 	OCPM::DMAC::initialize();
 	OCPM::INTC::initialize();
+	OCPM::PFC::initialize();
 	OCPM::Serial::initialize();
 	OCPM::Timer::initialize();
 }
