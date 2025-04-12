@@ -29,7 +29,15 @@ constexpr static int INTC_END = 0xF90;
 
 static uint8_t oram[0x400];
 
-uint16_t read_gpio_port(int port);
+struct GpioState
+{
+	uint16_t output_latch[2];
+	uint16_t direction[2];
+};
+
+GpioState gpio;
+
+uint16_t read_gpio_inputs(int port);
 
 uint8_t io_read8(uint32_t addr)
 {
@@ -72,11 +80,20 @@ uint16_t io_read16(uint32_t addr)
 		return INTC::read16(addr);
 	}
 
+	int gpio_port = (addr>>1) & 1;
 	switch (addr)
 	{
 	case 0xFC0:
 	case 0xFC2:
-		return read_gpio_port((addr>>1) & 1);
+		{
+			uint16_t input = read_gpio_inputs(gpio_port);
+			uint16_t output = gpio.output_latch[gpio_port];
+			uint16_t direction = gpio.direction[gpio_port];
+			return (output & direction) | (input & ~direction);
+		}
+	case 0xFC4:
+	case 0xFC6:
+		return gpio.direction[gpio_port];
 	default:
 		Log::warn("[OCPM] unmapped read %08X", addr);
 		return 0;
@@ -91,19 +108,19 @@ uint32_t io_read32(uint32_t addr)
 void io_write8(uint32_t addr, uint8_t value)
 {
 	addr = (addr & 0x1FF) + 0xE00;
-
+	
 	if (addr >= SERIAL_START && addr < SERIAL_END)
 	{
 		Serial::write8(addr, value);
 		return;
 	}
-
+	
 	if (addr >= TIMER_START && addr < TIMER_END)
 	{
 		Timer::write8(addr, value);
 		return;
 	}
-
+	
 	if (addr >= INTC_START && addr < INTC_END)
 	{
 		INTC::write8(addr, value);
@@ -134,10 +151,27 @@ void io_write16(uint32_t addr, uint16_t value)
 		return;
 	}
 
+	int gpio_port = (addr>>1) & 1;
 	switch (addr)
 	{
 	case 0xFB8:
 		return;
+	case 0xFC0:
+	case 0xFC2:
+		gpio.output_latch[gpio_port] = value;
+		break;
+	case 0xFC4:
+	case 0xFC6:
+		gpio.direction[gpio_port] = value;
+		break;
+	case 0xFC8:
+	case 0xFCC:
+		Log::debug("[OCPM] GPIO write P%sCR1: %04X", gpio_port ? "B" : "A", value);
+		break;
+	case 0xFCA:
+	case 0xFCE:
+		Log::debug("[OCPM] GPIO write P%sCR2: %04X", gpio_port ? "B" : "A", value);
+		break;
 	default:
 		Log::warn("[OCPM] unmapped write %08X: %04X", addr, value);
 	}
@@ -191,7 +225,7 @@ void oram_write32(uint32_t addr, uint32_t value)
 	memcpy(&oram[addr & 0x3FF], &value, 4);
 }
 
-uint16_t read_gpio_port(int port)
+uint16_t read_gpio_inputs(int port)
 {
 	if (port == 0)
 	{
