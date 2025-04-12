@@ -54,6 +54,8 @@ static bool can_execute_exception(int vector_id, int prio)
 	return true;
 }
 
+void raise_exception(int vector_id);
+
 static bool handle_exception()
 {
 	if (sh2.pending_exception_vector)

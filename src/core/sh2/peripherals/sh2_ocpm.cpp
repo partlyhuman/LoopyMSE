@@ -1,5 +1,6 @@
 #include "core/sh2/peripherals/sh2_ocpm.h"
 
+#include <common/wordops.h>
 #include <common/bswp.h>
 #include <log/log.h>
 
@@ -49,17 +50,12 @@ uint8_t io_read8(uint32_t addr)
 		return INTC::read8(addr);
 	}
 
-	switch (addr)
-	{
-	default:
-		Log::debug("[OCPM] read8 %08X", addr);
-		return 0;
-	}
+	READ_HALFWORD(io, addr);
 }
 
 uint16_t io_read16(uint32_t addr)
 {
-	addr = (addr & 0x1FF) + 0xE00;
+	addr = (addr & 0x1FE) + 0xE00;
 
 	if (addr >= TIMER_START && addr < TIMER_END)
 	{
@@ -82,20 +78,14 @@ uint16_t io_read16(uint32_t addr)
 	case 0xFC2:
 		return read_gpio_port((addr>>1) & 1);
 	default:
-		Log::debug("[OCPM] read16 %08X", addr);
+		Log::warn("[OCPM] unmapped read %08X", addr);
 		return 0;
 	}
 }
 
 uint32_t io_read32(uint32_t addr)
 {
-	addr = (addr & 0x1FF) + 0xE00;
-	switch (addr)
-	{
-	default:
-		Log::debug("[OCPM] read32 %08X", addr);
-		return 0;
-	}
+	READ_DOUBLEWORD(io, addr);
 }
 
 void io_write8(uint32_t addr, uint8_t value)
@@ -120,16 +110,12 @@ void io_write8(uint32_t addr, uint8_t value)
 		return;
 	}
 
-	switch (addr)
-	{
-	default:
-		Log::debug("[OCPM] write8 %08X: %02X", addr, value);
-	}
+	WRITE_HALFWORD(io, addr, value);
 }
 
 void io_write16(uint32_t addr, uint16_t value)
 {
-	addr = (addr & 0x1FF) + 0xE00;
+	addr = (addr & 0x1FE) + 0xE00;
 	if (addr >= TIMER_START && addr < TIMER_END)
 	{
 		Timer::write16(addr, value);
@@ -153,7 +139,7 @@ void io_write16(uint32_t addr, uint16_t value)
 	case 0xFB8:
 		return;
 	default:
-		Log::debug("[OCPM] write16 %08X: %04X", addr, value);
+		Log::warn("[OCPM] unmapped write %08X: %04X", addr, value);
 	}
 }
 
@@ -165,11 +151,8 @@ void io_write32(uint32_t addr, uint32_t value)
 		DMAC::write32(addr, value);
 		return;
 	}
-	switch (addr)
-	{
-	default:
-		Log::debug("[OCPM] write32 %08X: %08X", addr, value);
-	}
+
+	WRITE_DOUBLEWORD(io, addr, value);
 }
 
 uint8_t oram_read8(uint32_t addr)

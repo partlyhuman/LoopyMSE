@@ -1,5 +1,7 @@
 #include <common/bswp.h>
 #include <common/imgwriter.h>
+#include <common/wordops.h>
+
 #include <core/loopy_io.h>
 #include <core/memory.h>
 #include <core/sh2/peripherals/sh2_intc.h>
@@ -294,14 +296,14 @@ uint8_t palette_read8(uint32_t addr)
 uint16_t palette_read16(uint32_t addr)
 {
 	uint16_t value;
-	memcpy(&value, &vdp.palette[addr & 0x1FF], 2);
+	memcpy(&value, &vdp.palette[addr & 0x1FE], 2);
 	return Common::bswp16(value);
 }
 
 uint32_t palette_read32(uint32_t addr)
 {
 	uint32_t value;
-	memcpy(&value, &vdp.palette[addr & 0x1FF], 4);
+	memcpy(&value, &vdp.palette[addr & 0x1FE], 4);
 	return Common::bswp32(value);
 }
 
@@ -313,70 +315,68 @@ void palette_write8(uint32_t addr, uint8_t value)
 void palette_write16(uint32_t addr, uint16_t value)
 {
 	value = Common::bswp16(value);
-	memcpy(&vdp.palette[addr & 0x1FF], &value, 2);
+	memcpy(&vdp.palette[addr & 0x1FE], &value, 2);
 }
 
 void palette_write32(uint32_t addr, uint32_t value)
 {
 	value = Common::bswp32(value);
-	memcpy(&vdp.palette[addr & 0x1FF], &value, 4);
+	memcpy(&vdp.palette[addr & 0x1FE], &value, 4);
 }
 
 uint8_t oam_read8(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	return vdp.oam[addr & 0x1FF];
 }
 
 uint16_t oam_read16(uint32_t addr)
 {
 	uint16_t value;
-	memcpy(&value, &vdp.oam[addr & 0x1FF], 2);
+	memcpy(&value, &vdp.oam[addr & 0x1FE], 2);
 	return Common::bswp16(value);
 }
 
 uint32_t oam_read32(uint32_t addr)
 {
 	uint32_t value;
-	memcpy(&value, &vdp.oam[addr & 0x1FF], 4);
+	memcpy(&value, &vdp.oam[addr & 0x1FE], 4);
 	return Common::bswp32(value);
 }
 
 void oam_write8(uint32_t addr, uint8_t value)
 {
-	assert(0);
+	vdp.oam[addr & 0x1FF] = value;
 }
 
 void oam_write16(uint32_t addr, uint16_t value)
 {
 	value = Common::bswp16(value);
-	memcpy(&vdp.oam[addr & 0x1FF], &value, 2);
+	memcpy(&vdp.oam[addr & 0x1FE], &value, 2);
 }
 
 void oam_write32(uint32_t addr, uint32_t value)
 {
 	value = Common::bswp32(value);
-	memcpy(&vdp.oam[addr & 0x1FF], &value, 4);
+	memcpy(&vdp.oam[addr & 0x1FE], &value, 4);
 }
 
 uint8_t capture_read8(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	return vdp.capture_buffer[addr & 0x1FF];
 }
 
 uint16_t capture_read16(uint32_t addr)
 {
-	addr &= 0x1FF;
 	uint16_t value;
-	memcpy(&value, &vdp.capture_buffer[addr], 2);
+	memcpy(&value, &vdp.capture_buffer[addr & 0x1FE], 2);
 	return Common::bswp16(value);
 }
 
 uint32_t capture_read32(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	uint32_t value;
+	memcpy(&value, &vdp.capture_buffer[addr & 0x1FE], 4);
+	return Common::bswp32(value);
 }
 
 void capture_write8(uint32_t addr, uint8_t value)
@@ -396,13 +396,12 @@ void capture_write32(uint32_t addr, uint32_t value)
 
 uint8_t bitmap_reg_read8(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	READ_HALFWORD(bitmap_reg, addr);
 }
 
 uint16_t bitmap_reg_read16(uint32_t addr)
 {
-	addr &= 0xFFF;
+	addr &= 0xFFE;
 
 	int index = (addr >> 1) & 0x3;
 	auto layer = &vdp.bitmap_regs[index];
@@ -436,18 +435,17 @@ uint16_t bitmap_reg_read16(uint32_t addr)
 
 uint32_t bitmap_reg_read32(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	READ_DOUBLEWORD(bitmap_reg, addr);
 }
 
 void bitmap_reg_write8(uint32_t addr, uint8_t value)
 {
-	assert(0);
+	WRITE_HALFWORD(bitmap_reg, addr, value);
 }
 
 void bitmap_reg_write16(uint32_t addr, uint16_t value)
 {
-	addr &= 0xFFF;
+	addr &= 0xFFE;
 
 	int index = (addr >> 1) & 0x3;
 	auto layer = &vdp.bitmap_regs[index];
@@ -499,18 +497,17 @@ void bitmap_reg_write16(uint32_t addr, uint16_t value)
 
 void bitmap_reg_write32(uint32_t addr, uint32_t value)
 {
-	assert(0);
+	WRITE_DOUBLEWORD(bitmap_reg, addr, value);
 }
 
 uint8_t ctrl_read8(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	READ_HALFWORD(ctrl, addr);
 }
 
 uint16_t ctrl_read16(uint32_t addr)
 {
-	addr &= 0xFFF;
+	addr &= 0xFFE;
 	switch (addr)
 	{
 	case 0x000:
@@ -536,18 +533,17 @@ uint16_t ctrl_read16(uint32_t addr)
 
 uint32_t ctrl_read32(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	READ_DOUBLEWORD(ctrl, addr);
 }
 
 void ctrl_write8(uint32_t addr, uint8_t value)
 {
-	assert(0);
+	WRITE_HALFWORD(ctrl, addr, value);
 }
 
 void ctrl_write16(uint32_t addr, uint16_t value)
 {
-	addr &= 0xFFF;
+	addr &= 0xFFE;
 	switch (addr)
 	{
 	case 0x000:
@@ -596,25 +592,17 @@ void ctrl_write16(uint32_t addr, uint16_t value)
 
 void ctrl_write32(uint32_t addr, uint32_t value)
 {
-	assert(0);
+	WRITE_DOUBLEWORD(ctrl, addr, value);
 }
 
 uint8_t bgobj_read8(uint32_t addr)
 {
-	addr &= 0xFFF;
-	switch (addr)
-	{
-	case 0x20:
-		return vdp.tilebase;
-	default:
-		assert(0);
-		return 0;
-	}
+	READ_HALFWORD(bgobj, addr);
 }
 
 uint16_t bgobj_read16(uint32_t addr)
 {
-	addr &= 0xFFF;
+	addr &= 0xFFE;
 	switch (addr)
 	{
 	case 0x000:
@@ -660,18 +648,17 @@ uint16_t bgobj_read16(uint32_t addr)
 
 uint32_t bgobj_read32(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	READ_DOUBLEWORD(bgobj, addr);
 }
 
 void bgobj_write8(uint32_t addr, uint8_t value)
 {
-	assert(0);
+	WRITE_HALFWORD(bgobj, addr, value);
 }
 
 void bgobj_write16(uint32_t addr, uint16_t value)
 {
-	addr &= 0xFFF;
+	addr &= 0xFFE;
 	switch (addr)
 	{
 	case 0x000:
@@ -736,18 +723,17 @@ void bgobj_write16(uint32_t addr, uint16_t value)
 
 void bgobj_write32(uint32_t addr, uint32_t value)
 {
-	assert(0);
+	WRITE_DOUBLEWORD(bgobj, addr, value);
 }
 
 uint8_t display_read8(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	READ_HALFWORD(display, addr);
 }
 
 uint16_t display_read16(uint32_t addr)
 {
-	addr &= 0xFFF;
+	addr &= 0xFFE;
 	switch (addr)
 	{
 	case 0x000:
@@ -795,18 +781,17 @@ uint16_t display_read16(uint32_t addr)
 
 uint32_t display_read32(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	READ_DOUBLEWORD(display, addr);
 }
 
 void display_write8(uint32_t addr, uint8_t value)
 {
-	assert(0);
+	WRITE_HALFWORD(display, addr, value);
 }
 
 void display_write16(uint32_t addr, uint16_t value)
 {
-	addr &= 0xFFF;
+	addr &= 0xFFE;
 	switch (addr)
 	{
 	case 0x000:
@@ -857,18 +842,17 @@ void display_write16(uint32_t addr, uint16_t value)
 
 void display_write32(uint32_t addr, uint32_t value)
 {
-	assert(0);
+	WRITE_DOUBLEWORD(display, addr, value);
 }
 
 uint8_t irq_read8(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	READ_HALFWORD(irq, addr);
 }
 
 uint16_t irq_read16(uint32_t addr)
 {
-	addr &= 0xFFF;
+	addr &= 0xFFE;
 
 	switch (addr)
 	{
@@ -884,18 +868,17 @@ uint16_t irq_read16(uint32_t addr)
 
 uint32_t irq_read32(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	READ_DOUBLEWORD(irq, addr);
 }
 
 void irq_write8(uint32_t addr, uint8_t value)
 {
-	assert(0);
+	WRITE_HALFWORD(irq, addr, value);
 }
 
 void irq_write16(uint32_t addr, uint16_t value)
 {
-	addr &= 0xFFF;
+	addr &= 0xFFE;
 
 	switch (addr)
 	{
@@ -918,18 +901,17 @@ void irq_write16(uint32_t addr, uint16_t value)
 
 void irq_write32(uint32_t addr, uint32_t value)
 {
-	assert(0);
+	WRITE_DOUBLEWORD(irq, addr, value);
 }
 
 uint8_t dma_ctrl_read8(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	READ_HALFWORD(dma_ctrl, addr);
 }
 
 uint16_t dma_ctrl_read16(uint32_t addr)
 {
-	addr &= 0xFFF;
+	addr &= 0xFFE;
 	switch (addr)
 	{
 	case 0x002:
@@ -944,18 +926,17 @@ uint16_t dma_ctrl_read16(uint32_t addr)
 
 uint32_t dma_ctrl_read32(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	READ_DOUBLEWORD(dma_ctrl, addr);
 }
 
 void dma_ctrl_write8(uint32_t addr, uint8_t value)
 {
-	assert(0);
+	WRITE_HALFWORD(dma_ctrl, addr, value);
 }
 
 void dma_ctrl_write16(uint32_t addr, uint16_t value)
 {
-	addr &= 0xFFF;
+	addr &= 0xFFE;
 	switch (addr)
 	{
 	case 0x000:
@@ -975,7 +956,7 @@ void dma_ctrl_write16(uint32_t addr, uint16_t value)
 
 void dma_ctrl_write32(uint32_t addr, uint32_t value)
 {
-	assert(0);
+	WRITE_DOUBLEWORD(dma_ctrl, addr, value);
 }
 
 uint8_t dma_read8(uint32_t addr)
@@ -998,14 +979,14 @@ uint32_t dma_read32(uint32_t addr)
 
 void dma_write8(uint32_t addr, uint8_t value)
 {
-	assert(0);
+	WRITE_HALFWORD(dma, addr, value);
 }
 
 void dma_write16(uint32_t addr, uint16_t value)
 {
 	//Value written doesn't matter, it always triggers this
 	//TODO: how long does this take? Is the CPU stalled?
-	addr &= 0x3FF;
+	addr &= 0x3FE;
 
 	int y = addr >> 1;
 	for (int x = 0; x < DISPLAY_WIDTH; x++)
@@ -1020,7 +1001,7 @@ void dma_write16(uint32_t addr, uint16_t value)
 
 void dma_write32(uint32_t addr, uint32_t value)
 {
-	assert(0);
+	WRITE_DOUBLEWORD(dma, addr, value);
 }
 
 }  // namespace Video

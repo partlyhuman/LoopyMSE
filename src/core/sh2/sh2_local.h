@@ -39,7 +39,6 @@ struct CPU
 extern CPU sh2;
 
 void assert_irq(int vector_id, int prio);
-void raise_exception(int vector_id);
 void set_pc(uint32_t new_pc);
 void set_sr(uint32_t new_sr);
 

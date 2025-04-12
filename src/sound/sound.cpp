@@ -28,6 +28,8 @@ Game support notes:
 #include <memory>
 #include <vector>
 
+#include <common/wordops.h>
+
 namespace Sound
 {
 
@@ -185,8 +187,6 @@ void ctrl_write8(uint32_t addr, uint8_t value)
 void ctrl_write16(uint32_t addr, uint16_t value)
 {
 	value &= 0xFFF;
-	//Log::debug("[Sound] Control register %03X", value);
-	//fflush(stdout);
 	if (sound_engine)
 	{
 		sound_engine->set_control_register(value);
@@ -195,7 +195,7 @@ void ctrl_write16(uint32_t addr, uint16_t value)
 
 void ctrl_write32(uint32_t addr, uint32_t value)
 {
-	assert(0);
+	WRITE_DOUBLEWORD(ctrl, addr, value);
 }
 
 void midi_byte_in(uint8_t value)

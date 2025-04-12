@@ -1,3 +1,4 @@
+#include <common/wordops.h>
 #include <core/loopy_io.h>
 #include <log/log.h>
 
@@ -29,13 +30,12 @@ void shutdown()
 
 uint8_t reg_read8(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	READ_HALFWORD(reg, addr);
 }
 
 uint16_t reg_read16(uint32_t addr)
 {
-	addr &= 0xFFF;
+	addr &= 0xFFE;
 	switch (addr)
 	{
 	case 0x000:
@@ -56,18 +56,17 @@ uint16_t reg_read16(uint32_t addr)
 
 uint32_t reg_read32(uint32_t addr)
 {
-	assert(0);
-	return 0;
+	READ_DOUBLEWORD(reg, addr);
 }
 
 void reg_write8(uint32_t addr, uint8_t value)
 {
-	assert(0);
+	WRITE_HALFWORD(reg, addr, value);
 }
 
 void reg_write16(uint32_t addr, uint16_t value)
 {
-	addr &= 0xFFF;
+	addr &= 0xFFE;
 	switch (addr)
 	{
 	case 0x030:
@@ -79,7 +78,7 @@ void reg_write16(uint32_t addr, uint16_t value)
 
 void reg_write32(uint32_t addr, uint32_t value)
 {
-	assert(0);
+	WRITE_DOUBLEWORD(reg, addr, value);
 }
 
 void update_pad(int key_info, bool pressed)
