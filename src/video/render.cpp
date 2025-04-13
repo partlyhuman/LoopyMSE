@@ -670,10 +670,22 @@ static void draw_screen_overlay(int y, bool screen_b_prio)
 
 static void display_capture(int y)
 {
+	uint16_t* capture_buffer_15bpp = (uint16_t*)&vdp.capture_buffer[0];
 	switch (vdp.capture_ctrl.format)
 	{
-	case 0x03:
-		//Capture screen A before applying the palette
+	case 0:
+		//Capture blended output in 15bpp
+		memcpy(vdp.capture_buffer, vdp.display_output.get(), DISPLAY_WIDTH * sizeof(uint16_t));
+	case 1:
+		//Capture screen A in 15bpp via the palette/backdrop
+		for(int x = 0; x < DISPLAY_WIDTH; x++)
+		{
+			capture_buffer_15bpp[x] = Common::bswp16(read_screen(0, x));
+		}
+		break;
+	case 2:
+	case 3:
+		//Capture screen A in 8bpp
 		memcpy(vdp.capture_buffer, vdp.screens[0], DISPLAY_WIDTH * sizeof(uint8_t));
 		break;
 	default:
