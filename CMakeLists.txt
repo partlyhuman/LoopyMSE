@@ -24,6 +24,7 @@ set (SDL_STATIC ON CACHE BOOL "" FORCE)
 set (SDL_SHARED OFF CACHE BOOL "" FORCE)
 set (SDL_TEST OFF CACHE BOOL "" FORCE)
 find_package(SDL2 REQUIRED)
+find_package(SDL2_ttf REQUIRED)
 include_directories(LoopyMSE PRIVATE ${SDL2_INCLUDE_DIRS})
 
 set (DIST_DIR ${CMAKE_BINARY_DIR}/dist)
