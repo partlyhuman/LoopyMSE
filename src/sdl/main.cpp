@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include <common/bswp.h>
 #include <common/imgwriter.h>
 #include <core/config.h>
@@ -108,6 +109,42 @@ void set_background_color(uint8_t r, uint8_t g, uint8_t b)
 {
 	SDL_SetRenderDrawColor(screen.renderer, r, g, b, 255);
 }
+
+void draw_text_scene(std::string message, int size_pts = 20)
+{
+	Log::info(message.c_str());
+	if (!TTF_WasInit())
+	{
+		TTF_Init();
+	}
+
+	TTF_Font* font = TTF_OpenFont(FONT_PATH.string().c_str(), size_pts);
+	if (!font)
+	{
+		Log::error("Couldn't load font at %s", FONT_PATH.string().c_str());
+	}
+
+	SDL_Color pink = {255, 105, 180, 255};
+	SDL_Color transparent = {0, 0, 0, 0};
+	SDL_Surface* text_surf = TTF_RenderUTF8_LCD(font, message.c_str(), pink, transparent);
+	SDL_Texture* text_tex = SDL_CreateTextureFromSurface(screen.renderer, text_surf);
+
+	SDL_Rect dest_rect = {
+		.w = text_surf->w,
+		.h = text_surf->h,
+		.x = (DISPLAY_WIDTH - text_surf->w) / 2,
+		.y = (DISPLAY_HEIGHT - text_surf->h) / 2,
+	};
+
+	set_background_color(0, 0, 0);
+	SDL_RenderClear(screen.renderer);
+	SDL_RenderCopy(screen.renderer, text_tex, NULL, &dest_rect);
+	SDL_RenderPresent(screen.renderer);
+
+	SDL_DestroyTexture(text_tex);
+	SDL_FreeSurface(text_surf);
+	TTF_CloseFont(font);
+}  // namespace SDL
 
 void initialize(Options::Args& args)
 {
@@ -289,35 +326,34 @@ int main(int argc, char** argv)
 
 	Log::set_level(args.verbose ? Log::VERBOSE : Log::INFO);
 
-	bool result = false;
+	bool load_success = false;
 	for (const auto& path : search_paths(args.bios, args.cart))
 	{
 		if (load_bios(config, path))
 		{
-			result = true;
+			load_success = true;
 			break;
 		}
 	}
-	if (!result)
+	if (!load_success)
 	{
 		Log::error(
-			"Error: Missing BIOS file. Provide by argument, or place at %s.\n", (PREFS_PATH / DEFAULT_BIOS_PATH).string().c_str()
+			"Error: Missing BIOS file. Provide by argument, or place at %s.\n",
+			(PREFS_PATH / DEFAULT_BIOS_PATH).string().c_str()
 		);
-
 		Options::print_usage();
-		exit(1);
 	}
 
-	result = false;
+	load_success = false;
 	for (const auto& path : search_paths(args.sound_bios, args.cart))
 	{
 		if (load_sound_bios(config, path))
 		{
-			result = true;
+			load_success = true;
 			break;
 		}
 	}
-	if (!result)
+	if (!load_success)
 	{
 		Log::warn(
 			"Missing sound bios file. Provide by argument, or place at %s.\n"
@@ -326,12 +362,17 @@ int main(int argc, char** argv)
 		);
 	}
 
-	if (args.cart.empty())
+	SDL::initialize(args);
+
+	if (config.bios_rom.empty())
 	{
-		Log::info("No ROM provided. Drop a Loopy ROM onto the window to play.");
-		// Appears some platforms achieve "open with" not by passing the arguments to the binary but by performing the open file action
-		// So don't prohibit starting into fullscreen without a ROM
-		// args.start_in_fullscreen = false;
+		SDL::draw_text_scene("Loopy BIOS not found");
+		is_paused = true;
+	}
+	else if (args.cart.empty())
+	{
+		SDL::draw_text_scene("Drag in ROM");
+		is_paused = true;
 	}
 	else if (load_cart(config, args.cart))
 	{
@@ -344,11 +385,9 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		Log::error("Could not load ROM file.");
-		exit(1);
+		SDL::draw_text_scene("Could not load ROM");
+		is_paused = true;
 	}
-
-	SDL::initialize(args);
 
 	constexpr int framerate_target = 60;  //TODO: get this from Video if it can be changed (e.g. for PAL mode)
 	constexpr int framerate_max_lag = 5;
@@ -408,9 +447,9 @@ int main(int argc, char** argv)
 						screenshot_filename += imagew::image_extension(screenshot_image_type);
 
 						Log::info("Saving screenshot to %s", screenshot_filename.string().c_str());
-						Video::dump_current_frame(screenshot_image_type, config.emulator.image_save_directory / screenshot_filename);
-
-						//Video::dump_all_bmps(screenshot_image_type, config.emulator.image_save_directory);
+						Video::dump_current_frame(
+							screenshot_image_type, config.emulator.image_save_directory / screenshot_filename
+						);
 					}
 					break;
 				case SDLK_F11:
@@ -510,13 +549,13 @@ int main(int argc, char** argv)
 				if (load_cart(config, path))
 				{
 					Log::info("Loaded %s...", path.c_str());
-					
+
 					fs::path rom_path = fs::absolute(config.cart.rom_path);
 					if (rom_path.has_parent_path())
 					{
 						config.emulator.image_save_directory = rom_path.parent_path();
 					}
-					
+
 					System::initialize(config);
 					// So you can tell that MSE is running even before you click into it
 					is_paused = false;
