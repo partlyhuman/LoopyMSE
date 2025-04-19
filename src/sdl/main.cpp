@@ -31,6 +31,7 @@ struct Screen
 	SDL_Window* window;
 	SDL_Texture* texture;
 	int int_scale;
+	bool aspect_ratio_correction = false;
 
 	bool is_fullscreen()
 	{
@@ -55,8 +56,16 @@ void shutdown()
 
 void update(uint16_t* display_output)
 {
-	// Draw screen
-	SDL_UpdateTexture(screen.texture, NULL, display_output, sizeof(uint16_t) * DISPLAY_WIDTH);
+	void* pixels;
+	int pitch;
+
+	// More efficient alternative to SDL_UpdateTexture(screen.texture, NULL, display_output, sizeof(uint16_t) * DISPLAY_WIDTH);
+	if (SDL_LockTexture(screen.texture, NULL, &pixels, &pitch) == 0)
+	{
+		memcpy(pixels, display_output, sizeof(uint16_t) * DISPLAY_WIDTH * DISPLAY_HEIGHT);
+		SDL_UnlockTexture(screen.texture);
+	}
+
 	SDL_RenderClear(screen.renderer);
 	SDL_RenderCopy(screen.renderer, screen.texture, NULL, NULL);
 	SDL_RenderPresent(screen.renderer);
@@ -87,7 +96,10 @@ void change_int_scale(int delta_int_scale)
 	if (!screen.is_fullscreen())
 	{
 		screen.int_scale = std::clamp(screen.int_scale + delta_int_scale, 1, 8);
-		SDL_SetWindowSize(screen.window, screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT);
+		int w = DISPLAY_WIDTH * screen.int_scale;
+		int h = DISPLAY_HEIGHT * screen.int_scale;
+		if (screen.aspect_ratio_correction) w = h * 4.0 / 3.0;
+		SDL_SetWindowSize(screen.window, w, h);
 	}
 }
 
@@ -122,8 +134,6 @@ void initialize(Options::Args& args)
 
 	//Try synchronizing window drawing to VBLANK
 	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
-	//Nearest neighbour scaling
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
 	SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "1");
 	//Helps stuttering after app backgrounded/foregrounded on MacOS?
 	SDL_SetHint(SDL_HINT_MAC_OPENGL_ASYNC_DISPATCH, "0");
@@ -131,18 +141,27 @@ void initialize(Options::Args& args)
 	//Set up SDL screen
 	char title[64];
 	snprintf(title, sizeof(title), "%s %s", PROJECT_DESCRIPTION, PROJECT_VERSION);
+	screen.aspect_ratio_correction = args.aspect_ratio_correction;
 	screen.int_scale = std::clamp(args.int_scale, 1, 8);
 	Uint32 create_window_flags = SDL_WINDOW_RESIZABLE | (args.start_in_fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 	screen.window = SDL_CreateWindow(
-		title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen.int_scale * DISPLAY_WIDTH,
-		screen.int_scale * DISPLAY_HEIGHT, create_window_flags
+		title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, DISPLAY_WIDTH, DISPLAY_HEIGHT, create_window_flags
 	);
 
 	screen.renderer = SDL_CreateRenderer(screen.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-	SDL_SetWindowSize(screen.window, screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT);
-	SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+	if (screen.aspect_ratio_correction)
+	{
+		SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_HEIGHT * 4.0 / 3.0, DISPLAY_HEIGHT);
+	}
+	else
+	{
+		SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+	}
+	// This has to do with the logical size, which is integer
 	SDL_RenderSetIntegerScale(screen.renderer, SDL_TRUE);
 
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, args.anti_aliasing ? "1" : "0");
+	change_int_scale(0);
 	screen.texture = SDL_CreateTexture(
 		screen.renderer, SDL_PIXELFORMAT_ARGB1555, SDL_TEXTUREACCESS_STREAMING, DISPLAY_WIDTH, DISPLAY_HEIGHT
 	);
@@ -301,7 +320,8 @@ int main(int argc, char** argv)
 	if (!result)
 	{
 		Log::error(
-			"Error: Missing BIOS file. Provide by argument, or place at %s.\n", (PREFS_PATH / DEFAULT_BIOS_PATH).string().c_str()
+			"Error: Missing BIOS file. Provide by argument, or place at %s.\n",
+			(PREFS_PATH / DEFAULT_BIOS_PATH).string().c_str()
 		);
 
 		Options::print_usage();
@@ -408,7 +428,9 @@ int main(int argc, char** argv)
 						screenshot_filename += imagew::image_extension(screenshot_image_type);
 
 						Log::info("Saving screenshot to %s", screenshot_filename.string().c_str());
-						Video::dump_current_frame(screenshot_image_type, config.emulator.image_save_directory / screenshot_filename);
+						Video::dump_current_frame(
+							screenshot_image_type, config.emulator.image_save_directory / screenshot_filename
+						);
 
 						//Video::dump_all_bmps(screenshot_image_type, config.emulator.image_save_directory);
 					}
@@ -510,13 +532,13 @@ int main(int argc, char** argv)
 				if (load_cart(config, path))
 				{
 					Log::info("Loaded %s...", path.c_str());
-					
+
 					fs::path rom_path = fs::absolute(config.cart.rom_path);
 					if (rom_path.has_parent_path())
 					{
 						config.emulator.image_save_directory = rom_path.parent_path();
 					}
-					
+
 					System::initialize(config);
 					// So you can tell that MSE is running even before you click into it
 					is_paused = false;
