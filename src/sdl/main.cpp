@@ -17,6 +17,9 @@
 #include "config.h"
 #include "options.h"
 
+#define PRESCALE_FACTOR 4
+#define MAX_WINDOW_INT_SCALE 10
+
 namespace imagew = Common::ImageWriter;
 
 namespace SDL
@@ -24,13 +27,25 @@ namespace SDL
 
 using Video::DISPLAY_HEIGHT;
 using Video::DISPLAY_WIDTH;
+// Logical size includes border to allow for both 224 line and 240 line modes, and show some of the background effects.
+// In reality the Loopy active area is drawn inside this and borders are visible, in 240 line mode more of this is used.
+static constexpr int FRAME_WIDTH = 280;
+static constexpr int FRAME_HEIGHT = 240;
+// Scales the frame size up to 4:3 320x240
+static constexpr float ASPECT_CORRECT_SCALE_X = (320.0f / FRAME_WIDTH);
 
 struct Screen
 {
 	SDL_Renderer* renderer;
 	SDL_Window* window;
-	SDL_Texture* texture;
-	int int_scale;
+	SDL_Texture* framebuffer;
+	SDL_Texture* prescaled;
+	int visible_scanlines = DISPLAY_HEIGHT;
+	int window_int_scale = 1;
+	int prescale = 1;
+	bool correct_aspect_ratio;
+	bool crop_overscan;
+	bool antialias;
 
 	bool is_fullscreen()
 	{
@@ -46,20 +61,12 @@ void shutdown()
 	SDL_ShowCursor(SDL_ENABLE);
 
 	//Destroy window, then kill SDL2
-	SDL_DestroyTexture(screen.texture);
+	if (screen.prescaled) SDL_DestroyTexture(screen.prescaled);
+	SDL_DestroyTexture(screen.framebuffer);
 	SDL_DestroyRenderer(screen.renderer);
 	SDL_DestroyWindow(screen.window);
 
 	SDL_Quit();
-}
-
-void update(uint16_t* display_output)
-{
-	// Draw screen
-	SDL_UpdateTexture(screen.texture, NULL, display_output, sizeof(uint16_t) * DISPLAY_WIDTH);
-	SDL_RenderClear(screen.renderer);
-	SDL_RenderCopy(screen.renderer, screen.texture, NULL, NULL);
-	SDL_RenderPresent(screen.renderer);
 }
 
 void open_first_controller()
@@ -82,31 +89,126 @@ void open_first_controller()
 	controller = nullptr;
 }
 
-void change_int_scale(int delta_int_scale)
+SDL_Point resize_window(bool apply = true, int scale = 0)
 {
-	if (!screen.is_fullscreen())
+	if (scale <= 0) scale = screen.window_int_scale;
+	float frame_w = scale * (screen.crop_overscan ? DISPLAY_WIDTH : FRAME_WIDTH);
+	float frame_h = scale * (screen.crop_overscan ? screen.visible_scanlines : FRAME_HEIGHT);
+	if (screen.correct_aspect_ratio)
 	{
-		screen.int_scale = std::clamp(screen.int_scale + delta_int_scale, 1, 8);
-		SDL_SetWindowSize(screen.window, screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT);
+		frame_w *= ASPECT_CORRECT_SCALE_X;
 	}
+
+	SDL_Point frame = {(int)SDL_roundf(frame_w), (int)SDL_roundf(frame_h)};
+	if (apply)
+	{
+		SDL_SetWindowSize(screen.window, frame.x, frame.y);
+	}
+	Log::info("[SCREEN] size width=%d height=%d", frame.x, frame.y);
+	return frame;
+}
+
+void change_window_scale(int delta)
+{
+	float logical_w = (screen.crop_overscan ? DISPLAY_WIDTH : FRAME_WIDTH);
+	float logical_h = (screen.crop_overscan ? screen.visible_scanlines : FRAME_HEIGHT);
+	if (screen.correct_aspect_ratio)
+	{
+		logical_w *= ASPECT_CORRECT_SCALE_X;
+	}
+	int window_w, window_h;
+	SDL_GetWindowSize(screen.window, &window_w, &window_h);
+	float scale = SDL_min(window_w / logical_w, window_h / logical_h);
+	int new_scale = (int)SDL_roundf(scale + delta);
+	screen.window_int_scale = std::clamp(new_scale, 1, MAX_WINDOW_INT_SCALE);
+	resize_window();
 }
 
 void toggle_fullscreen()
 {
-	if (SDL_SetWindowFullscreen(screen.window, screen.is_fullscreen() ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
+	bool to_fullscreen = !screen.is_fullscreen();
+	if (SDL_SetWindowFullscreen(screen.window, to_fullscreen * SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
 	{
 		Log::error("Error fullscreening: %s", SDL_GetError());
 		return;
 	}
+
 	if (controller)
 	{
-		SDL_ShowCursor(screen.is_fullscreen() ? SDL_DISABLE : SDL_ENABLE);
+		SDL_ShowCursor(to_fullscreen ? SDL_DISABLE : SDL_ENABLE);
 	}
 }
 
-void set_background_color(uint8_t r, uint8_t g, uint8_t b)
+static inline void set_draw_color_16bpp(uint16_t c)
 {
-	SDL_SetRenderDrawColor(screen.renderer, r, g, b, 255);
+	uint8_t r = ((c >> 10) & 31) * 255 / 31;
+	uint8_t g = ((c >> 5) & 31) * 255 / 31;
+	uint8_t b = (c & 31) * 255 / 31;
+	// uint8_t a = (c >> 15) * 255;
+	SDL_SetRenderDrawColor(screen.renderer, r, g, b, SDL_ALPHA_OPAQUE);
+}
+
+void update(uint16_t* display_output, int visible_scanlines, uint16_t background_color)
+{
+	if (visible_scanlines != screen.visible_scanlines)
+	{
+		screen.visible_scanlines = visible_scanlines;
+		if (!screen.is_fullscreen() && screen.crop_overscan)
+		{
+			resize_window();
+		}
+	}
+
+	void* pixels;
+	int pitch;
+
+	// More efficient alternative to SDL_UpdateTexture(screen.texture, NULL, display_output, sizeof(uint16_t) * DISPLAY_WIDTH);
+	if (SDL_LockTexture(screen.framebuffer, NULL, &pixels, &pitch) == 0)
+	{
+		memcpy(pixels, display_output, sizeof(uint16_t) * DISPLAY_WIDTH * DISPLAY_HEIGHT);
+		SDL_UnlockTexture(screen.framebuffer);
+	}
+
+	// Prescale
+	if (screen.prescaled)
+	{
+		SDL_SetRenderTarget(screen.renderer, screen.prescaled);
+		SDL_RenderClear(screen.renderer);
+		SDL_RenderCopy(screen.renderer, screen.framebuffer, NULL, NULL);
+	}
+
+	// Change target back to screen (must be done before querying renderer output size!)
+	SDL_SetRenderTarget(screen.renderer, NULL);
+	set_draw_color_16bpp(background_color);
+	SDL_RenderClear(screen.renderer);
+
+	SDL_Rect src = {0, 0, DISPLAY_WIDTH * screen.prescale, visible_scanlines * screen.prescale};
+	SDL_Rect frame = {0, 0, FRAME_WIDTH * screen.prescale, FRAME_HEIGHT * screen.prescale};
+	if (screen.crop_overscan) frame = src;
+	SDL_Rect dest = {0};
+	SDL_GetRendererOutputSize(screen.renderer, &dest.w, &dest.h);
+
+	float scale_x = (float)dest.w / frame.w;
+	float scale_y = (float)dest.h / frame.h;
+	float scale = SDL_min(scale_x, scale_y);
+	if (!screen.antialias && !screen.correct_aspect_ratio)
+	{
+		scale = SDL_floorf(scale);
+	}
+	scale_x = scale_y = scale;
+	if (screen.correct_aspect_ratio)
+	{
+		scale_x *= ASPECT_CORRECT_SCALE_X;
+	}
+	float w = scale_x * src.w;
+	float h = scale_y * src.h;
+	dest.x = (dest.w - w) / 2;
+	dest.y = (dest.h - h) / 2;
+	dest.w = w;
+	dest.h = h;
+
+	SDL_RenderCopy(screen.renderer, (screen.prescaled ? screen.prescaled : screen.framebuffer), &src, &dest);
+	SDL_RenderPresent(screen.renderer);
 }
 
 void initialize(Options::Args& args)
@@ -122,42 +224,54 @@ void initialize(Options::Args& args)
 
 	//Try synchronizing window drawing to VBLANK
 	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
-	//Nearest neighbour scaling
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
 	SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "1");
-	//Helps stuttering after app backgrounded/foregrounded on MacOS?
-	SDL_SetHint(SDL_HINT_MAC_OPENGL_ASYNC_DISPATCH, "0");
 
 	//Set up SDL screen
+	screen.correct_aspect_ratio = args.correct_aspect_ratio;
+	screen.crop_overscan = args.crop_overscan;
+	screen.antialias = args.antialias;
+	screen.window_int_scale = std::clamp(args.int_scale, 1, MAX_WINDOW_INT_SCALE);
+	screen.prescale = args.antialias ? PRESCALE_FACTOR : 1;
+
 	char title[64];
 	snprintf(title, sizeof(title), "%s %s", PROJECT_DESCRIPTION, PROJECT_VERSION);
-	screen.int_scale = std::clamp(args.int_scale, 1, 8);
-	Uint32 create_window_flags = SDL_WINDOW_RESIZABLE | (args.start_in_fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+	SDL_Point window_size = resize_window(false);
+	Uint32 window_opts = 0;
+	window_opts |= args.crop_overscan ? 0 : SDL_WINDOW_RESIZABLE;
+	window_opts |= args.start_in_fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
 	screen.window = SDL_CreateWindow(
-		title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen.int_scale * DISPLAY_WIDTH,
-		screen.int_scale * DISPLAY_HEIGHT, create_window_flags
+		title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_size.x, window_size.y, window_opts
 	);
+	window_size = resize_window(false, 1);
+	SDL_SetWindowMinimumSize(screen.window, window_size.x, window_size.y);
 
 	screen.renderer = SDL_CreateRenderer(screen.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-	SDL_SetWindowSize(screen.window, screen.int_scale * DISPLAY_WIDTH, screen.int_scale * DISPLAY_HEIGHT);
-	SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
-	SDL_RenderSetIntegerScale(screen.renderer, SDL_TRUE);
 
-	screen.texture = SDL_CreateTexture(
+	screen.framebuffer = SDL_CreateTexture(
 		screen.renderer, SDL_PIXELFORMAT_ARGB1555, SDL_TEXTUREACCESS_STREAMING, DISPLAY_WIDTH, DISPLAY_HEIGHT
 	);
-	SDL_SetTextureBlendMode(screen.texture, SDL_BLENDMODE_BLEND);
+	SDL_SetTextureBlendMode(screen.framebuffer, SDL_BLENDMODE_BLEND);
+	SDL_SetTextureScaleMode(screen.framebuffer, SDL_ScaleModeNearest);
 
-	//Allow dropping a ROM onto the window
+	if (screen.prescale > 1)
+	{
+		screen.prescaled = SDL_CreateTexture(
+			screen.renderer, SDL_PIXELFORMAT_ARGB1555, SDL_TEXTUREACCESS_TARGET, DISPLAY_WIDTH * screen.prescale,
+			DISPLAY_HEIGHT * screen.prescale
+		);
+		SDL_SetTextureBlendMode(screen.prescaled, SDL_BLENDMODE_BLEND);
+		SDL_SetTextureScaleMode(screen.prescaled, SDL_ScaleModeBest);
+	}
+
+	// Allow dropping a ROM onto the window
 	SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
 
 	if (SDL_GameControllerAddMappingsFromFile((RESOURCE_PATH / CONTROLLER_DB_PATH).string().c_str()) < 0)
 	{
 		Log::warn("Could not load game controller database: %s", SDL_GetError());
-		//Nonfatal: continue without the mappings
+		// Nonfatal: continue without the mappings
 	}
 	open_first_controller();
-	set_background_color(0, 0, 0);
 }
 
 }  // namespace SDL
@@ -301,7 +415,8 @@ int main(int argc, char** argv)
 	if (!result)
 	{
 		Log::error(
-			"Error: Missing BIOS file. Provide by argument, or place at %s.\n", (PREFS_PATH / DEFAULT_BIOS_PATH).string().c_str()
+			"Error: Missing BIOS file. Provide by argument, or place at %s.\n",
+			(PREFS_PATH / DEFAULT_BIOS_PATH).string().c_str()
 		);
 
 		Options::print_usage();
@@ -381,7 +496,7 @@ int main(int argc, char** argv)
 				System::run();
 				draw_frames--;
 			}
-			SDL::update(System::get_display_output());
+			SDL::update(System::get_display_output(), Video::get_display_scanlines(), Video::get_background_color());
 		}
 
 		SDL_Event e;
@@ -408,7 +523,9 @@ int main(int argc, char** argv)
 						screenshot_filename += imagew::image_extension(screenshot_image_type);
 
 						Log::info("Saving screenshot to %s", screenshot_filename.string().c_str());
-						Video::dump_current_frame(screenshot_image_type, config.emulator.image_save_directory / screenshot_filename);
+						Video::dump_current_frame(
+							screenshot_image_type, config.emulator.image_save_directory / screenshot_filename
+						);
 
 						//Video::dump_all_bmps(screenshot_image_type, config.emulator.image_save_directory);
 					}
@@ -426,10 +543,16 @@ int main(int argc, char** argv)
 					}
 					break;
 				case SDLK_MINUS:
-					SDL::change_int_scale(-1);
+					if (!SDL::screen.is_fullscreen())
+					{
+						SDL::change_window_scale(-1);
+					}
 					break;
 				case SDLK_EQUALS:
-					SDL::change_int_scale(1);
+					if (!SDL::screen.is_fullscreen())
+					{
+						SDL::change_window_scale(1);
+					}
 					break;
 				case SDLK_ESCAPE:
 					if (SDL::screen.is_fullscreen())
@@ -510,13 +633,13 @@ int main(int argc, char** argv)
 				if (load_cart(config, path))
 				{
 					Log::info("Loaded %s...", path.c_str());
-					
+
 					fs::path rom_path = fs::absolute(config.cart.rom_path);
 					if (rom_path.has_parent_path())
 					{
 						config.emulator.image_save_directory = rom_path.parent_path();
 					}
-					
+
 					System::initialize(config);
 					// So you can tell that MSE is running even before you click into it
 					is_paused = false;

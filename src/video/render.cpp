@@ -1,8 +1,11 @@
+#include "video/render.h"
+
+#include <common/bswp.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cstring>
-#include <common/bswp.h>
-#include "video/render.h"
+
 #include "video/vdp_local.h"
 
 namespace Video::Renderer
@@ -43,17 +46,9 @@ static void write_screen(int index, int x, uint8_t value)
 	}
 }
 
-static void write_color_raw(std::unique_ptr<uint16_t[]>& buffer, int x, int y, uint16_t value)
+static inline void write_color_raw(std::unique_ptr<uint16_t[]>& buffer, int x, int y, uint16_t value)
 {
 	x &= 0x1FF;
-
-	//Layer output is always 240 lines long, even in 224-line mode
-	//This just centers the picture for 224-line mode
-	if (!vdp.mode.extra_scanlines)
-	{
-		y += 8;
-	}
-
 	if (x < DISPLAY_WIDTH)
 	{
 		buffer[x + (y * DISPLAY_WIDTH)] = value;
@@ -144,7 +139,7 @@ static void draw_bg(int index, int screen_y)
 	TilemapInfo tilemap;
 	get_tilemap_info(tilemap);
 
-	uint32_t map_start = (index == 1) ? tilemap.bg1_start : 0;;
+	uint32_t map_start = (index == 1) ? tilemap.bg1_start : 0;
 
 	for (int screen_x = 0; screen_x < DISPLAY_WIDTH; screen_x++)
 	{
@@ -213,7 +208,7 @@ static void draw_bg(int index, int screen_y)
 			int pal = (palsel >> (pal_descriptor * 4)) & 0xF;
 			output |= pal << 4;
 		}
-		
+
 		write_pal_color(vdp.bg_output[index], screen_x, screen_y, output);
 		write_screen(screen_index, screen_x, output);
 	}
@@ -678,7 +673,7 @@ static void display_capture(int y)
 		memcpy(vdp.capture_buffer, vdp.display_output.get(), DISPLAY_WIDTH * sizeof(uint16_t));
 	case 1:
 		//Capture screen A in 15bpp via the palette/backdrop
-		for(int x = 0; x < DISPLAY_WIDTH; x++)
+		for (int x = 0; x < DISPLAY_WIDTH; x++)
 		{
 			capture_buffer_15bpp[x] = Common::bswp16(read_screen(0, x));
 		}
@@ -736,15 +731,15 @@ void draw_scanline(int y)
 	}
 }
 
-void draw_border_scanline(int y, bool show_border_color)
+void draw_border_scanline(int y)
 {
 	//Draw backdrop A to the whole scanline
 	//Note: y is relative to visible area!
-	uint16_t border_color = show_border_color ? (vdp.backdrops[0] | 0x8000) : 0;
+	uint16_t border_color = vdp.backdrops[0] | 0x8000;
 	for (int x = 0; x < DISPLAY_WIDTH; x++)
 	{
 		write_color_raw(vdp.display_output, x, y, border_color);
 	}
 }
 
-}
+}  // namespace Video::Renderer

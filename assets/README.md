@@ -66,7 +66,7 @@ LoopyMSE has basic printer emulation for the most common types of seals. When a 
 The location and file name of the saved image are similar to screenshots, but prefixed with `print_`.
 On supported systems, the image is automatically opened with the associated application.
 
-Seals are printed at pixel-perfect scale like the emulator display, which means they are technically the wrong aspect ratio.
+Seals are printed at pixel-perfect scale, which means they are technically the wrong aspect ratio.
 If you want to scale them to correct for this, aim for an 8:7 relative ratio, resulting in *approximately* 4:3 total.
 For example a 256x224 seal looks good if first doubled to 512x448 with nearest-neighbor and then stretched to 585x448 with bilinear/bicubic.
 

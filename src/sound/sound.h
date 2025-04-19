@@ -16,8 +16,8 @@ Game support notes:
 */
 
 #pragma once
-#include <string>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace Sound
@@ -56,7 +56,7 @@ void ctrl_write32(uint32_t addr, uint32_t value);
 void midi_byte_in(uint8_t value);
 void set_mute(bool mute_in);
 
-void wav_play(std::string path, double volume);
+void wav_queue(std::string path, float volume);
 void wav_stop();
 
 }  // namespace Sound

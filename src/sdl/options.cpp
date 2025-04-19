@@ -5,9 +5,9 @@
 #include <fstream>
 #include <iostream>
 
+#include "common/imgwriter.h"
 #include "input/input.h"
 #include "log/log.h"
-#include "common/imgwriter.h"
 
 namespace po = boost::program_options;
 namespace imagew = Common::ImageWriter;
@@ -91,15 +91,15 @@ void parse_commandline(int argc, char** argv, Args& args)
 }
 
 const std::unordered_map<std::string, Input::PadButton> KEYBOARD_CONFIG_KEY_TO_PAD_ENUM = {
-	{"keyboard-map.pad_start", Input::PAD_START}, 	{"keyboard-map.pad_l1", Input::PAD_L1},
-	{"keyboard-map.pad_r1", Input::PAD_R1},		  	{"keyboard-map.pad_a", Input::PAD_A},
-	{"keyboard-map.pad_d", Input::PAD_D},		  	{"keyboard-map.pad_c", Input::PAD_C},
-	{"keyboard-map.pad_b", Input::PAD_B},		  	{"keyboard-map.pad_up", Input::PAD_UP},
-	{"keyboard-map.pad_down", Input::PAD_DOWN},	  	{"keyboard-map.pad_left", Input::PAD_LEFT},
+	{"keyboard-map.pad_start", Input::PAD_START}, {"keyboard-map.pad_l1", Input::PAD_L1},
+	{"keyboard-map.pad_r1", Input::PAD_R1},		  {"keyboard-map.pad_a", Input::PAD_A},
+	{"keyboard-map.pad_d", Input::PAD_D},		  {"keyboard-map.pad_c", Input::PAD_C},
+	{"keyboard-map.pad_b", Input::PAD_B},		  {"keyboard-map.pad_up", Input::PAD_UP},
+	{"keyboard-map.pad_down", Input::PAD_DOWN},	  {"keyboard-map.pad_left", Input::PAD_LEFT},
 	{"keyboard-map.pad_right", Input::PAD_RIGHT},
 };
 const std::unordered_map<std::string, Input::PadButton> CONTROLLER_CONFIG_KEY_TO_PAD_ENUM = {
-	{"controller-map.pad_start", Input::PAD_START},	{"controller-map.pad_l1", Input::PAD_L1},
+	{"controller-map.pad_start", Input::PAD_START}, {"controller-map.pad_l1", Input::PAD_L1},
 	{"controller-map.pad_r1", Input::PAD_R1},		{"controller-map.pad_a", Input::PAD_A},
 	{"controller-map.pad_d", Input::PAD_D},			{"controller-map.pad_c", Input::PAD_C},
 	{"controller-map.pad_b", Input::PAD_B},			{"controller-map.pad_up", Input::PAD_UP},
@@ -148,8 +148,11 @@ bool parse_config(fs::path config_path, Args& args)
 		("emulator.run_in_background", po::value<bool>()->default_value(false), "Continue emulation while window not focused")
 		("emulator.start_in_fullscreen", po::value<bool>()->default_value(false), "Default to fullscreen mode")
 		("emulator.int_scale", po::value<int>()->default_value(3), "Integer scale")
+		("emulator.correct_aspect_ratio", po::value<bool>()->default_value(true), "Stretch display pixels to 4:3")
+		("emulator.crop_overscan", po::value<bool>()->default_value(true), "Crop border and overscan areas")
+		("emulator.antialias", po::value<bool>()->default_value(true), "Apply AA (recommended when used with aspect ratio correction)")
 		("emulator.screenshot_image_type", po::value<std::string>()->default_value("bmp"), "Image file type for screenshots");
-	
+
 	po::options_description printer_options("Printer");
 	printer_options.add_options()
 		("printer.image_type", po::value<std::string>()->default_value("bmp"), "Image file type for printed files")
@@ -173,10 +176,16 @@ bool parse_config(fs::path config_path, Args& args)
 		args.sound_bios = vm["emulator.sound_bios"].as<std::string>();
 		args.run_in_background = vm["emulator.run_in_background"].as<bool>();
 		args.start_in_fullscreen = vm["emulator.start_in_fullscreen"].as<bool>();
+		args.correct_aspect_ratio = vm["emulator.correct_aspect_ratio"].as<bool>();
+		args.antialias = vm["emulator.antialias"].as<bool>();
+		args.crop_overscan = vm["emulator.crop_overscan"].as<bool>();
 		args.int_scale = vm["emulator.int_scale"].as<int>();
-		args.screenshot_image_type = imagew::parse_image_type(vm["emulator.screenshot_image_type"].as<std::string>(), imagew::IMAGE_TYPE_DEFAULT);
+		args.screenshot_image_type = imagew::parse_image_type(
+			vm["emulator.screenshot_image_type"].as<std::string>(), imagew::IMAGE_TYPE_DEFAULT
+		);
 
-		args.printer_image_type = imagew::parse_image_type(vm["printer.image_type"].as<std::string>(), imagew::IMAGE_TYPE_DEFAULT);
+		args.printer_image_type =
+			imagew::parse_image_type(vm["printer.image_type"].as<std::string>(), imagew::IMAGE_TYPE_DEFAULT);
 		args.printer_view_command = vm["printer.view_command"].as<std::string>();
 
 		// Keymap

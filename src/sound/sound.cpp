@@ -16,6 +16,7 @@ Game support notes:
 */
 
 #include <SDL2/SDL.h>
+#include <common/wordops.h>
 #include <core/timing.h>
 #include <log/log.h>
 #include <sound/loopysound.h>
@@ -27,8 +28,6 @@ Game support notes:
 #include <cstring>
 #include <memory>
 #include <vector>
-
-#include <common/wordops.h>
 
 namespace Sound
 {
@@ -54,7 +53,7 @@ static SDL_AudioSpec audio_device_spec;
 static SDL_AudioSpec wav_spec;
 static SDL_AudioStream* wav_stream = NULL;
 static std::vector<uint8_t> wav_buf;
-static double wav_volume = 1;
+static float wav_volume = 1;
 
 static void sdl_audio_callback(void* userdata, uint8_t* raw_buffer, int len)
 {
@@ -264,7 +263,7 @@ static void buffer_callback(float* sample_buffer, uint32_t sample_count)
 	}
 }
 
-void wav_play(std::string path, double volume)
+void wav_queue(std::string path, float volume)
 {
 	wav_volume = SDL_clamp(volume, 0, 1);
 
@@ -277,17 +276,6 @@ void wav_play(std::string path, double volume)
 		return;
 	}
 	Log::debug("[Sound] WAV playing %s", path.c_str());
-
-	if (wav_stream)
-	{
-		SDL_AudioStreamClear(wav_stream);
-		if (wav_spec.format != spec.format || wav_spec.channels != spec.channels || wav_spec.freq != spec.freq)
-		{
-			Log::debug("[Sound] WAV of different stream type than previously used, freeing");
-			SDL_FreeAudioStream(wav_stream);
-			wav_stream = NULL;
-		}
-	}
 
 	if (!wav_stream)
 	{

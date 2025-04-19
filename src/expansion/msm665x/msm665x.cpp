@@ -10,13 +10,15 @@
 #include "log/log.h"
 #include "sound/sound.h"
 
+#define WAV_MIX_SCALE 0.8
+
 // define this to only run on specific carts by header
 // in this stage of development, no harm turning it on always
 #undef LIMIT_TO_KNOWN_CARTS
 
 std::unordered_set<uint32_t> EXPANSION_CARTS = {
 	0xD90FE762,	 // Wanwan Aijou Monogatari
-	0x11EEBE7A,	 // Wanwan-T-En (subject to change)
+	0xB5BE48D7,	 // Wanwan-T-En (v1.0)
 };
 
 namespace fs = std::filesystem;
@@ -31,7 +33,7 @@ bool is_enabled()
 
 std::vector<fs::path> wavs;
 
-double computed_volume = 1;
+float computed_volume = 1;
 uint8_t op_v = 0;
 uint8_t op_s = 0;
 uint8_t op_a = 0;
@@ -99,7 +101,7 @@ void option_set(uint8_t data)
 	op_v |= data & 0x1;
 	op_s |= (data >> 2) & 0x1;
 	op_a |= (data >> 3) & 0x1;
-	computed_volume = (op_v ? 0.5 : 1.0) * SDL_pow(0.5, vc_vl);
+	computed_volume = (op_v ? 0.5f : 1.0f) * SDL_powf(0.5f, vc_vl);
 
 	// Log::trace("[MSM665] option_set 0x%X op_v=%d op_s=%d op_a=%d", data, op_v, op_s, op_a);
 
@@ -122,7 +124,7 @@ void voice_control(uint8_t data)
 	vc_sm = (data >> 4) & 0x1;
 	// Log::trace("[MSM665] voice_control 0x%X vc_vl=%d vc_rp=%d vc_sm=%d", data, vc_vl, vc_rp, vc_sm);
 
-	computed_volume = (op_v ? 0.5 : 1.0) * SDL_pow(0.5, vc_vl);
+	computed_volume = (op_v ? 0.5f : 1.0f) * SDL_powf(0.5f, vc_vl);
 	// self.computed_volume = (0.5 if self.op_v else 1.0) * pow(0.5, self.vc_vl)
 	Log::debug(
 		"[MSM665] Voice control set VOL=%s REPEAT=%s SMOOTH=%s", VOLUME_STRS[vc_vl], REPEAT_STRS[vc_rp],
@@ -173,7 +175,7 @@ void write8(uint32_t addr, uint8_t value)
 			if (index >= 0 && index < wavs.size())
 			{
 				Log::debug("[MSM665] Play sample %d", data);
-				Sound::wav_play(wavs[index].string(), computed_volume);
+				Sound::wav_queue(wavs[index].string(), computed_volume * WAV_MIX_SCALE);
 			}
 			else
 			{
