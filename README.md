@@ -1,6 +1,14 @@
 # LoopyMSE
 A Casio Loopy emulator. WIP, plays commercial games with sound.
 
+Features:
+- Runs all commercial games including Magical Shop
+- Sound emulation
+- High-level printer emulation
+- High-level PCM expansion audio emulation
+- Controller support
+- Available on Mac, Win, Linux
+
 Features still TODO:
 - Mouse emulation
 
