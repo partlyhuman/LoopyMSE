@@ -148,8 +148,9 @@ bool parse_config(fs::path config_path, Args& args)
 		("emulator.run_in_background", po::value<bool>()->default_value(false), "Continue emulation while window not focused")
 		("emulator.start_in_fullscreen", po::value<bool>()->default_value(false), "Default to fullscreen mode")
 		("emulator.int_scale", po::value<int>()->default_value(3), "Integer scale")
-		("emulator.aspect_ratio_correction", po::value<bool>()->default_value(false), "Stretch display pixels to 4:3")
-		("emulator.anti_aliasing", po::value<bool>()->default_value(false), "Apply AA (recommended when used with aspect ratio correction)")
+		("emulator.correct_aspect_ratio", po::value<bool>()->default_value(true), "Stretch display pixels to 4:3")
+		("emulator.crop_overscan", po::value<bool>()->default_value(true), "Crop border and overscan areas")
+		("emulator.antialias", po::value<bool>()->default_value(true), "Apply AA (recommended when used with aspect ratio correction)")
 		("emulator.screenshot_image_type", po::value<std::string>()->default_value("bmp"), "Image file type for screenshots");
 
 	po::options_description printer_options("Printer");
@@ -175,8 +176,9 @@ bool parse_config(fs::path config_path, Args& args)
 		args.sound_bios = vm["emulator.sound_bios"].as<std::string>();
 		args.run_in_background = vm["emulator.run_in_background"].as<bool>();
 		args.start_in_fullscreen = vm["emulator.start_in_fullscreen"].as<bool>();
-		args.aspect_ratio_correction = vm["emulator.aspect_ratio_correction"].as<bool>();
-		args.anti_aliasing = vm["emulator.anti_aliasing"].as<bool>();
+		args.correct_aspect_ratio = vm["emulator.correct_aspect_ratio"].as<bool>();
+		args.antialias = vm["emulator.antialias"].as<bool>();
+		args.crop_overscan = vm["emulator.crop_overscan"].as<bool>();
 		args.int_scale = vm["emulator.int_scale"].as<int>();
 		args.screenshot_image_type = imagew::parse_image_type(
 			vm["emulator.screenshot_image_type"].as<std::string>(), imagew::IMAGE_TYPE_DEFAULT

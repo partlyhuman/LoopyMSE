@@ -14,8 +14,9 @@ struct Args
 	std::string sound_bios;
 	bool run_in_background;
 	bool start_in_fullscreen;
-	bool aspect_ratio_correction;
-	bool anti_aliasing;
+	bool correct_aspect_ratio;
+	bool crop_overscan;
+	bool antialias;
 	bool verbose;
 	int int_scale = 2;
 	int screenshot_image_type;

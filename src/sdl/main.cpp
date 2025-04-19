@@ -24,14 +24,22 @@ namespace SDL
 
 using Video::DISPLAY_HEIGHT;
 using Video::DISPLAY_WIDTH;
+// Logical size includes border to allow for both 224 line and 240 line modes, and show some of the background effects.
+// In reality the Loopy active area is drawn inside this and borders are visible, in 240 line mode more of this is used.
+static constexpr int FRAME_WIDTH = 280;
+static constexpr int FRAME_HEIGHT = 240;
+static constexpr int MAX_INT_SCALE = 10;
 
 struct Screen
 {
 	SDL_Renderer* renderer;
 	SDL_Window* window;
 	SDL_Texture* texture;
-	int int_scale;
-	bool aspect_ratio_correction = false;
+	int visible_scanlines = DISPLAY_HEIGHT;
+	int int_scale = 1;
+	bool correct_aspect_ratio;
+	bool crop_overscan;
+	bool antialias;
 
 	bool is_fullscreen()
 	{
@@ -54,35 +62,6 @@ void shutdown()
 	SDL_Quit();
 }
 
-void update(uint16_t* display_output, int visible_scanlines)
-{
-	void* pixels;
-	int pitch;
-
-	// More efficient alternative to SDL_UpdateTexture(screen.texture, NULL, display_output, sizeof(uint16_t) * DISPLAY_WIDTH);
-	if (SDL_LockTexture(screen.texture, NULL, &pixels, &pitch) == 0)
-	{
-		memcpy(pixels, display_output, sizeof(uint16_t) * DISPLAY_WIDTH * DISPLAY_HEIGHT);
-		SDL_UnlockTexture(screen.texture);
-	}
-
-	SDL_RenderClear(screen.renderer);
-
-	if (screen.aspect_ratio_correction)
-	{
-		SDL_Rect src = {
-			.x = 0, .y = (DISPLAY_HEIGHT - visible_scanlines) / 2, .w = DISPLAY_WIDTH, .h = visible_scanlines
-		};
-		SDL_RenderCopy(screen.renderer, screen.texture, &src, NULL);
-	}
-	else
-	{
-		SDL_RenderCopy(screen.renderer, screen.texture, NULL, NULL);
-	}
-
-	SDL_RenderPresent(screen.renderer);
-}
-
 void open_first_controller()
 {
 	// Gets the first controller available
@@ -103,60 +82,117 @@ void open_first_controller()
 	controller = nullptr;
 }
 
-SDL_Point get_window_size()
+SDL_Point resize_window(bool apply = true, int scale = 0)
 {
-	int w = DISPLAY_WIDTH * screen.int_scale;
-	int h = DISPLAY_HEIGHT * screen.int_scale;
-	if (screen.aspect_ratio_correction)
+	if (scale <= 0) scale = screen.int_scale;
+	float frame_w = scale * (screen.crop_overscan ? DISPLAY_WIDTH : FRAME_WIDTH);
+	float frame_h = scale * (screen.crop_overscan ? screen.visible_scanlines : FRAME_HEIGHT);
+	if (screen.correct_aspect_ratio)
 	{
-		h = 3.0f * w / 4.0f;
+		frame_w = frame_w / ((float)DISPLAY_WIDTH / DISPLAY_HEIGHT) * 4.0f / 3.0f;
 	}
-	return {.x = w, .y = h};
+
+	SDL_Point frame = {.x = (int)SDL_roundf(frame_w), .y = (int)SDL_roundf(frame_h)};
+	if (apply)
+	{
+		SDL_SetWindowSize(screen.window, frame.x, frame.y);
+	}
+	Log::info("[SCREEN] size width=%d height=%d", frame.x, frame.y);
+	return frame;
 }
 
 void change_int_scale(int delta_int_scale)
 {
-	screen.int_scale = std::clamp(screen.int_scale + delta_int_scale, 1, 8);
-	SDL_Point size = get_window_size();
-	if (screen.aspect_ratio_correction)
+	float logical_w = (screen.crop_overscan ? DISPLAY_WIDTH : FRAME_WIDTH);
+	float logical_h = (screen.crop_overscan ? screen.visible_scanlines : FRAME_HEIGHT);
+	if (screen.correct_aspect_ratio)
 	{
-		SDL_RenderSetScale(screen.renderer, (float)size.x / DISPLAY_WIDTH, (float)size.y / DISPLAY_HEIGHT);
+		logical_w = logical_w / ((float)DISPLAY_WIDTH / DISPLAY_HEIGHT) * 4.0f / 3.0f;
 	}
-	SDL_SetWindowSize(screen.window, size.x, size.y);
+	int window_w, window_h;
+	SDL_GetWindowSize(screen.window, &window_w, &window_h);
+	float scale = SDL_min(window_w / logical_w, window_h / logical_h);
+	int new_scale = (int)SDL_roundf(scale + delta_int_scale);
+	screen.int_scale = std::clamp(new_scale, 1, MAX_INT_SCALE);
+	resize_window();
 }
 
 void toggle_fullscreen()
 {
-	if (SDL_SetWindowFullscreen(screen.window, screen.is_fullscreen() ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
+	bool to_fullscreen = !screen.is_fullscreen();
+	if (SDL_SetWindowFullscreen(screen.window, to_fullscreen * SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
 	{
 		Log::error("Error fullscreening: %s", SDL_GetError());
 		return;
 	}
 
-	bool is_fullscreen = screen.is_fullscreen();
-	if (screen.aspect_ratio_correction)
-	{
-		if (is_fullscreen)
-		{
-			// center within given frame
-			SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_HEIGHT / 3.0f * 4.0f, DISPLAY_HEIGHT);
-		}
-		else
-		{
-			// return to stretching to window size now that we control the window size
-			SDL_RenderSetLogicalSize(screen.renderer, 0, 0);
-			change_int_scale(0);
-		}
-	}
 	if (controller)
 	{
-		SDL_ShowCursor(is_fullscreen ? SDL_DISABLE : SDL_ENABLE);
+		SDL_ShowCursor(to_fullscreen ? SDL_DISABLE : SDL_ENABLE);
 	}
 }
 
 void set_background_color(uint8_t r, uint8_t g, uint8_t b)
 {
 	SDL_SetRenderDrawColor(screen.renderer, r, g, b, 255);
+}
+
+void update(uint16_t* display_output, int visible_scanlines)
+{
+	if (visible_scanlines != screen.visible_scanlines)
+	{
+		screen.visible_scanlines = visible_scanlines;
+		if (!screen.is_fullscreen() && screen.crop_overscan)
+		{
+			resize_window();
+		}
+	}
+
+	void* pixels;
+	int pitch;
+
+	// More efficient alternative to SDL_UpdateTexture(screen.texture, NULL, display_output, sizeof(uint16_t) * DISPLAY_WIDTH);
+	if (SDL_LockTexture(screen.texture, NULL, &pixels, &pitch) == 0)
+	{
+		memcpy(pixels, display_output, sizeof(uint16_t) * DISPLAY_WIDTH * DISPLAY_HEIGHT);
+		SDL_UnlockTexture(screen.texture);
+	}
+
+	SDL_RenderClear(screen.renderer);
+
+	SDL_Rect src = {.x = 0, .y = 0, .w = DISPLAY_WIDTH, .h = DISPLAY_HEIGHT};
+	SDL_Rect frame = {.x = 0, .y = 0, .w = FRAME_WIDTH, .h = FRAME_HEIGHT};
+	SDL_Rect dest = {.x = 0, .y = 0, .w = 0, .h = 0};
+	SDL_GetRendererOutputSize(screen.renderer, &dest.w, &dest.h);
+
+	if (screen.crop_overscan)
+	{
+		src.y = (DISPLAY_HEIGHT - visible_scanlines) / 2;
+		src.h = visible_scanlines;
+		frame = src;
+	}
+
+	float scale_x = (float)dest.w / frame.w;
+	float scale_y = (float)dest.h / frame.h;
+	float scale = SDL_max(1.0f, SDL_min(scale_x, scale_y));
+	if (!screen.antialias && !screen.correct_aspect_ratio)
+	{
+		scale = SDL_floorf(scale);
+	}
+	scale_x = scale_y = scale;
+	if (screen.correct_aspect_ratio)
+	{
+		scale_x = scale_x / ((float)DISPLAY_WIDTH / DISPLAY_HEIGHT) * 4.0f / 3.0f;
+	}
+	float w = scale_x * src.w;
+	float h = scale_y * src.h;
+	dest.x = (dest.w - w) / 2;
+	dest.y = (dest.h - h) / 2;
+	dest.w = w;
+	dest.h = h;
+
+	SDL_RenderCopy(screen.renderer, screen.texture, &src, &dest);
+	SDL_RenderPresent(screen.renderer);
 }
 
 void initialize(Options::Args& args)
@@ -175,26 +211,26 @@ void initialize(Options::Args& args)
 	SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "1");
 
 	//Set up SDL screen
-	screen.aspect_ratio_correction = args.aspect_ratio_correction;
-	screen.int_scale = std::clamp(args.int_scale, 1, 8);
+	screen.correct_aspect_ratio = args.correct_aspect_ratio;
+	screen.crop_overscan = args.crop_overscan;
+	screen.antialias = args.antialias;
+	screen.int_scale = std::clamp(args.int_scale, 1, MAX_INT_SCALE);
 
 	char title[64];
 	snprintf(title, sizeof(title), "%s %s", PROJECT_DESCRIPTION, PROJECT_VERSION);
-	SDL_Point window_size = get_window_size();
-	Uint32 create_window_flags = (args.aspect_ratio_correction ? 0 : SDL_WINDOW_RESIZABLE) |
-								 (args.start_in_fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+	SDL_Point window_size = resize_window(false);
+	Uint32 window_opts = 0;
+	window_opts |= args.crop_overscan ? 0 : SDL_WINDOW_RESIZABLE;
+	window_opts |= args.start_in_fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
 	screen.window = SDL_CreateWindow(
-		title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_size.x, window_size.y, create_window_flags
+		title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_size.x, window_size.y, window_opts
 	);
+	window_size = resize_window(false, 1);
+	SDL_SetWindowMinimumSize(screen.window, window_size.x, window_size.y);
 
 	screen.renderer = SDL_CreateRenderer(screen.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-	if (!screen.aspect_ratio_correction)
-	{
-		SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
-		SDL_RenderSetIntegerScale(screen.renderer, SDL_TRUE);
-	}
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, args.antialias ? "2" : "0");
 
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, args.anti_aliasing ? "2" : "0");
 	screen.texture = SDL_CreateTexture(
 		screen.renderer, SDL_PIXELFORMAT_ARGB1555, SDL_TEXTUREACCESS_STREAMING, DISPLAY_WIDTH, DISPLAY_HEIGHT
 	);
