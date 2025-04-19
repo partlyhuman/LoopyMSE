@@ -54,7 +54,7 @@ void shutdown()
 	SDL_Quit();
 }
 
-void update(uint16_t* display_output)
+void update(uint16_t* display_output, int visible_scanlines)
 {
 	void* pixels;
 	int pitch;
@@ -67,7 +67,19 @@ void update(uint16_t* display_output)
 	}
 
 	SDL_RenderClear(screen.renderer);
-	SDL_RenderCopy(screen.renderer, screen.texture, NULL, NULL);
+
+	if (screen.aspect_ratio_correction)
+	{
+		SDL_Rect src = {
+			.x = 0, .y = (DISPLAY_HEIGHT - visible_scanlines) / 2, .w = DISPLAY_WIDTH, .h = visible_scanlines
+		};
+		SDL_RenderCopy(screen.renderer, screen.texture, &src, NULL);
+	}
+	else
+	{
+		SDL_RenderCopy(screen.renderer, screen.texture, NULL, NULL);
+	}
+
 	SDL_RenderPresent(screen.renderer);
 }
 
@@ -98,7 +110,12 @@ void change_int_scale(int delta_int_scale)
 		screen.int_scale = std::clamp(screen.int_scale + delta_int_scale, 1, 8);
 		int w = DISPLAY_WIDTH * screen.int_scale;
 		int h = DISPLAY_HEIGHT * screen.int_scale;
-		if (screen.aspect_ratio_correction) w = h * 4.0 / 3.0;
+		if (screen.aspect_ratio_correction)
+		{
+			float hfloat = 3.0f * w / 4.0f;
+			h = (int)hfloat;
+			SDL_RenderSetScale(screen.renderer, (float)w / DISPLAY_WIDTH, hfloat / DISPLAY_HEIGHT);
+		}
 		SDL_SetWindowSize(screen.window, w, h);
 	}
 }
@@ -110,9 +127,25 @@ void toggle_fullscreen()
 		Log::error("Error fullscreening: %s", SDL_GetError());
 		return;
 	}
+
+	bool is_fullscreen = screen.is_fullscreen();
+	if (screen.aspect_ratio_correction)
+	{
+		if (is_fullscreen)
+		{
+			// center within given frame
+			SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_HEIGHT / 3.0f * 4.0f, DISPLAY_HEIGHT);
+		}
+		else
+		{
+			// return to stretching to window size now that we control the window size
+			SDL_RenderSetLogicalSize(screen.renderer, 0, 0);
+			change_int_scale(0);
+		}
+	}
 	if (controller)
 	{
-		SDL_ShowCursor(screen.is_fullscreen() ? SDL_DISABLE : SDL_ENABLE);
+		SDL_ShowCursor(is_fullscreen ? SDL_DISABLE : SDL_ENABLE);
 	}
 }
 
@@ -135,8 +168,6 @@ void initialize(Options::Args& args)
 	//Try synchronizing window drawing to VBLANK
 	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 	SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "1");
-	//Helps stuttering after app backgrounded/foregrounded on MacOS?
-	SDL_SetHint(SDL_HINT_MAC_OPENGL_ASYNC_DISPATCH, "0");
 
 	//Set up SDL screen
 	char title[64];
@@ -149,16 +180,11 @@ void initialize(Options::Args& args)
 	);
 
 	screen.renderer = SDL_CreateRenderer(screen.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-	if (screen.aspect_ratio_correction)
-	{
-		SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_HEIGHT * 4.0 / 3.0, DISPLAY_HEIGHT);
-	}
-	else
+	if (!screen.aspect_ratio_correction)
 	{
 		SDL_RenderSetLogicalSize(screen.renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+		SDL_RenderSetIntegerScale(screen.renderer, SDL_TRUE);
 	}
-	// This has to do with the logical size, which is integer
-	SDL_RenderSetIntegerScale(screen.renderer, SDL_TRUE);
 
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, args.anti_aliasing ? "1" : "0");
 	change_int_scale(0);
@@ -401,7 +427,7 @@ int main(int argc, char** argv)
 				System::run();
 				draw_frames--;
 			}
-			SDL::update(System::get_display_output());
+			SDL::update(System::get_display_output(), Video::get_display_scanlines());
 		}
 
 		SDL_Event e;

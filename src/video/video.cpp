@@ -1,7 +1,6 @@
 #include <common/bswp.h>
 #include <common/imgwriter.h>
 #include <common/wordops.h>
-
 #include <core/loopy_io.h>
 #include <core/memory.h>
 #include <core/sh2/peripherals/sh2_intc.h>
@@ -39,13 +38,15 @@ struct DumpHeader
 void dump_all_bmps(int image_type, fs::path base_path)
 {
 	fs::path image_ext = imagew::image_extension(image_type);
-	
+
 	for (int i = 0; i < 4; i++)
 	{
 		fs::path bitmap_name = "output_bitmap";
 		bitmap_name += std::to_string(i);
 		bitmap_name += image_ext;
-		imagew::save_image_16bpp(image_type, base_path / bitmap_name, DISPLAY_WIDTH, DISPLAY_HEIGHT, vdp.bitmap_output[i].get(), true);
+		imagew::save_image_16bpp(
+			image_type, base_path / bitmap_name, DISPLAY_WIDTH, DISPLAY_HEIGHT, vdp.bitmap_output[i].get(), true
+		);
 	}
 
 	for (int i = 0; i < 2; i++)
@@ -53,22 +54,30 @@ void dump_all_bmps(int image_type, fs::path base_path)
 		fs::path bg_name = "output_bg";
 		bg_name += std::to_string(i);
 		bg_name += image_ext;
-		imagew::save_image_16bpp(image_type, base_path / bg_name, DISPLAY_WIDTH, DISPLAY_HEIGHT, vdp.bg_output[i].get(), true);
+		imagew::save_image_16bpp(
+			image_type, base_path / bg_name, DISPLAY_WIDTH, DISPLAY_HEIGHT, vdp.bg_output[i].get(), true
+		);
 
 		fs::path screen_name = "output_screen_";
 		screen_name += (i == 1) ? 'B' : 'A';
 		screen_name += image_ext;
-		imagew::save_image_16bpp(image_type, base_path / screen_name, DISPLAY_WIDTH, DISPLAY_HEIGHT, vdp.screen_output[i].get(), true);
+		imagew::save_image_16bpp(
+			image_type, base_path / screen_name, DISPLAY_WIDTH, DISPLAY_HEIGHT, vdp.screen_output[i].get(), true
+		);
 
 		fs::path obj_name = "output_obj";
 		obj_name += std::to_string(i);
 		obj_name += image_ext;
-		imagew::save_image_16bpp(image_type, base_path / obj_name, DISPLAY_WIDTH, DISPLAY_HEIGHT, vdp.obj_output[i].get(), true);
+		imagew::save_image_16bpp(
+			image_type, base_path / obj_name, DISPLAY_WIDTH, DISPLAY_HEIGHT, vdp.obj_output[i].get(), true
+		);
 	}
 
 	fs::path display_name = "output_display";
 	display_name += image_ext;
-	imagew::save_image_16bpp(image_type, base_path / display_name, DISPLAY_WIDTH, DISPLAY_HEIGHT, vdp.display_output.get(), false);
+	imagew::save_image_16bpp(
+		image_type, base_path / display_name, DISPLAY_WIDTH, DISPLAY_HEIGHT, vdp.display_output.get(), false
+	);
 }
 
 static void start_hsync(uint64_t param, int cycles_late)
@@ -262,6 +271,11 @@ bool check_frame_end()
 	return vdp.frame_ended;
 }
 
+int get_display_scanlines()
+{
+	return vdp.visible_scanlines;
+}
+
 uint16_t* get_display_output()
 {
 	return vdp.display_output.get();
@@ -270,7 +284,8 @@ uint16_t* get_display_output()
 void dump_current_frame(int image_type, fs::path bmp_path)
 {
 	// Do we need to wait for vsync? This happens on input processing loop
-	bool status = imagew::save_image_16bpp(image_type, bmp_path, DISPLAY_WIDTH, DISPLAY_HEIGHT, vdp.display_output.get());
+	bool status =
+		imagew::save_image_16bpp(image_type, bmp_path, DISPLAY_WIDTH, DISPLAY_HEIGHT, vdp.display_output.get());
 }
 
 void dump_for_serial()
