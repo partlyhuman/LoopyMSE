@@ -103,21 +103,26 @@ void open_first_controller()
 	controller = nullptr;
 }
 
+SDL_Point get_window_size()
+{
+	int w = DISPLAY_WIDTH * screen.int_scale;
+	int h = DISPLAY_HEIGHT * screen.int_scale;
+	if (screen.aspect_ratio_correction)
+	{
+		h = 3.0f * w / 4.0f;
+	}
+	return {.x = w, .y = h};
+}
+
 void change_int_scale(int delta_int_scale)
 {
-	if (!screen.is_fullscreen())
+	screen.int_scale = std::clamp(screen.int_scale + delta_int_scale, 1, 8);
+	SDL_Point size = get_window_size();
+	if (screen.aspect_ratio_correction)
 	{
-		screen.int_scale = std::clamp(screen.int_scale + delta_int_scale, 1, 8);
-		int w = DISPLAY_WIDTH * screen.int_scale;
-		int h = DISPLAY_HEIGHT * screen.int_scale;
-		if (screen.aspect_ratio_correction)
-		{
-			float hfloat = 3.0f * w / 4.0f;
-			h = (int)hfloat;
-			SDL_RenderSetScale(screen.renderer, (float)w / DISPLAY_WIDTH, hfloat / DISPLAY_HEIGHT);
-		}
-		SDL_SetWindowSize(screen.window, w, h);
+		SDL_RenderSetScale(screen.renderer, (float)size.x / DISPLAY_WIDTH, (float)size.y / DISPLAY_HEIGHT);
 	}
+	SDL_SetWindowSize(screen.window, size.x, size.y);
 }
 
 void toggle_fullscreen()
@@ -170,13 +175,16 @@ void initialize(Options::Args& args)
 	SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "1");
 
 	//Set up SDL screen
-	char title[64];
-	snprintf(title, sizeof(title), "%s %s", PROJECT_DESCRIPTION, PROJECT_VERSION);
 	screen.aspect_ratio_correction = args.aspect_ratio_correction;
 	screen.int_scale = std::clamp(args.int_scale, 1, 8);
-	Uint32 create_window_flags = SDL_WINDOW_RESIZABLE | (args.start_in_fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+
+	char title[64];
+	snprintf(title, sizeof(title), "%s %s", PROJECT_DESCRIPTION, PROJECT_VERSION);
+	SDL_Point window_size = get_window_size();
+	Uint32 create_window_flags = (args.aspect_ratio_correction ? 0 : SDL_WINDOW_RESIZABLE) |
+								 (args.start_in_fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 	screen.window = SDL_CreateWindow(
-		title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, DISPLAY_WIDTH, DISPLAY_HEIGHT, create_window_flags
+		title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_size.x, window_size.y, create_window_flags
 	);
 
 	screen.renderer = SDL_CreateRenderer(screen.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
@@ -186,8 +194,7 @@ void initialize(Options::Args& args)
 		SDL_RenderSetIntegerScale(screen.renderer, SDL_TRUE);
 	}
 
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, args.anti_aliasing ? "1" : "0");
-	change_int_scale(0);
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, args.anti_aliasing ? "2" : "0");
 	screen.texture = SDL_CreateTexture(
 		screen.renderer, SDL_PIXELFORMAT_ARGB1555, SDL_TEXTUREACCESS_STREAMING, DISPLAY_WIDTH, DISPLAY_HEIGHT
 	);
@@ -474,10 +481,16 @@ int main(int argc, char** argv)
 					}
 					break;
 				case SDLK_MINUS:
-					SDL::change_int_scale(-1);
+					if (!SDL::screen.is_fullscreen())
+					{
+						SDL::change_int_scale(-1);
+					}
 					break;
 				case SDLK_EQUALS:
-					SDL::change_int_scale(1);
+					if (!SDL::screen.is_fullscreen())
+					{
+						SDL::change_int_scale(1);
+					}
 					break;
 				case SDLK_ESCAPE:
 					if (SDL::screen.is_fullscreen())
