@@ -62,6 +62,7 @@ void shutdown();
 void start_frame();
 bool check_frame_end();
 int get_display_scanlines();
+uint16_t get_background_color();
 uint16_t* get_display_output();
 
 void dump_all_bmps(int image_type, fs::path base_path);	 //TEMP ADDED

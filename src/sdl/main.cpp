@@ -132,12 +132,16 @@ void toggle_fullscreen()
 	}
 }
 
-void set_background_color(uint8_t r, uint8_t g, uint8_t b)
+static inline void set_draw_color_16bpp(uint16_t c)
 {
-	SDL_SetRenderDrawColor(screen.renderer, r, g, b, 255);
+	uint8_t r = ((c >> 10) & 31) * 255 / 31;
+	uint8_t g = ((c >> 5) & 31) * 255 / 31;
+	uint8_t b = (c & 31) * 255 / 31;
+	// uint8_t a = (c >> 15) * 255;
+	SDL_SetRenderDrawColor(screen.renderer, r, g, b, SDL_ALPHA_OPAQUE);
 }
 
-void update(uint16_t* display_output, int visible_scanlines)
+void update(uint16_t* display_output, int visible_scanlines, uint16_t background_color)
 {
 	if (visible_scanlines != screen.visible_scanlines)
 	{
@@ -158,17 +162,17 @@ void update(uint16_t* display_output, int visible_scanlines)
 		SDL_UnlockTexture(screen.texture);
 	}
 
+	// Note that this is not synchronized to rasterization
+	set_draw_color_16bpp(background_color);
 	SDL_RenderClear(screen.renderer);
 
-	SDL_Rect src = {.x = 0, .y = 0, .w = DISPLAY_WIDTH, .h = DISPLAY_HEIGHT};
+	SDL_Rect src = {.x = 0, .y = 0, .w = DISPLAY_WIDTH, .h = visible_scanlines};
 	SDL_Rect frame = {.x = 0, .y = 0, .w = FRAME_WIDTH, .h = FRAME_HEIGHT};
 	SDL_Rect dest = {.x = 0, .y = 0, .w = 0, .h = 0};
 	SDL_GetRendererOutputSize(screen.renderer, &dest.w, &dest.h);
 
 	if (screen.crop_overscan)
 	{
-		src.y = (DISPLAY_HEIGHT - visible_scanlines) / 2;
-		src.h = visible_scanlines;
 		frame = src;
 	}
 
@@ -229,23 +233,24 @@ void initialize(Options::Args& args)
 	SDL_SetWindowMinimumSize(screen.window, window_size.x, window_size.y);
 
 	screen.renderer = SDL_CreateRenderer(screen.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, args.antialias ? "2" : "0");
 
 	screen.texture = SDL_CreateTexture(
 		screen.renderer, SDL_PIXELFORMAT_ARGB1555, SDL_TEXTUREACCESS_STREAMING, DISPLAY_WIDTH, DISPLAY_HEIGHT
 	);
 	SDL_SetTextureBlendMode(screen.texture, SDL_BLENDMODE_BLEND);
+	SDL_SetTextureScaleMode(screen.texture, args.antialias ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
+	// Redundant to above
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, args.antialias ? "1" : "0");
 
-	//Allow dropping a ROM onto the window
+	// Allow dropping a ROM onto the window
 	SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
 
 	if (SDL_GameControllerAddMappingsFromFile((RESOURCE_PATH / CONTROLLER_DB_PATH).string().c_str()) < 0)
 	{
 		Log::warn("Could not load game controller database: %s", SDL_GetError());
-		//Nonfatal: continue without the mappings
+		// Nonfatal: continue without the mappings
 	}
 	open_first_controller();
-	set_background_color(0, 0, 0);
 }
 
 }  // namespace SDL
@@ -470,7 +475,7 @@ int main(int argc, char** argv)
 				System::run();
 				draw_frames--;
 			}
-			SDL::update(System::get_display_output(), Video::get_display_scanlines());
+			SDL::update(System::get_display_output(), Video::get_display_scanlines(), Video::get_background_color());
 		}
 
 		SDL_Event e;

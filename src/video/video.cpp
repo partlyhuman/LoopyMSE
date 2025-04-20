@@ -148,35 +148,31 @@ static void inc_vcount(uint64_t param, int cycles_late)
 
 	vdp.vcount++;
 
-	bool show_border_color = true;
-
 	//Once we go past the visible region, enter VSYNC
 	if (vdp.vcount == vdp.visible_scanlines)
 	{
-		//Now is a good time to draw the bottom border
-		if (!vdp.mode.extra_scanlines)
-		{
-			for (int y = 0; y < 8; y++)
-			{
-				Renderer::draw_border_scanline(vdp.visible_scanlines + y, show_border_color);
-			}
-		}
 		vsync_start();
 	}
 
 	//At the end of VSYNC, wrap around to the start of the visible region
 	constexpr static int VSYNC_END = 0x200;
+
 	if (vdp.vcount == VSYNC_END)
 	{
 		Log::debug("[Video] VSYNC end");
 		vdp.vcount = 0;
-		//Now is a good time to draw the top border
+
+		//Draw the background color outside the active area
 		if (!vdp.mode.extra_scanlines)
 		{
-			for (int y = 0; y < 8; y++)
-			{
-				Renderer::draw_border_scanline(y - 8, show_border_color);
-			}
+			// for (int y = 0xE0; y < 0xF0; y++)
+			// {
+			// 	Renderer::draw_border_scanline(y);
+			// }
+
+			//As an optimization, we can set a single column
+			//since SDL will be sampling the rect correctly, but AA will average from the very next column
+			Renderer::draw_border_scanline(0xE0);
 		}
 	}
 
@@ -269,6 +265,11 @@ void start_frame()
 bool check_frame_end()
 {
 	return vdp.frame_ended;
+}
+
+uint16_t get_background_color()
+{
+	return vdp.backdrops[0];
 }
 
 int get_display_scanlines()
