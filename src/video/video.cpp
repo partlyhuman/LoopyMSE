@@ -165,13 +165,9 @@ static void inc_vcount(uint64_t param, int cycles_late)
 		//Draw the background color outside the active area
 		if (!vdp.mode.extra_scanlines)
 		{
-			// for (int y = 0xE0; y < 0xF0; y++)
-			// {
-			// 	Renderer::draw_border_scanline(y);
-			// }
-
-			//As an optimization, we can set a single column
-			//since SDL will be sampling the rect correctly, but AA will average from the very next column
+			//SDL will be sampling only the active area rect, but during blending, AA will sample from the very next row,
+			//so fill it with the background instead of 0x0.
+			//The top, left, and right are not subject to this because the source rect touches the edges of the texture so it's not sampled beyond that
 			Renderer::draw_border_scanline(0xE0);
 		}
 	}

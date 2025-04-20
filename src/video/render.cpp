@@ -49,14 +49,6 @@ static void write_screen(int index, int x, uint8_t value)
 static inline void write_color_raw(std::unique_ptr<uint16_t[]>& buffer, int x, int y, uint16_t value)
 {
 	x &= 0x1FF;
-
-	// //Layer output is always 240 lines long, even in 224-line mode
-	// //This just centers the picture for 224-line mode
-	// if (!vdp.mode.extra_scanlines)
-	// {
-	// 	y += 8;
-	// }
-
 	if (x < DISPLAY_WIDTH)
 	{
 		buffer[x + (y * DISPLAY_WIDTH)] = value;
