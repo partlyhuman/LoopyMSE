@@ -28,6 +28,8 @@ using Video::DISPLAY_WIDTH;
 // In reality the Loopy active area is drawn inside this and borders are visible, in 240 line mode more of this is used.
 static constexpr int FRAME_WIDTH = 280;
 static constexpr int FRAME_HEIGHT = 240;
+// Scales the frame size up to 4:3 320x240
+static constexpr float ASPECT_CORRECT_SCALE_X = (320.0f / FRAME_WIDTH);
 static constexpr int MAX_INT_SCALE = 10;
 
 struct Screen
@@ -89,7 +91,7 @@ SDL_Point resize_window(bool apply = true, int scale = 0)
 	float frame_h = scale * (screen.crop_overscan ? screen.visible_scanlines : FRAME_HEIGHT);
 	if (screen.correct_aspect_ratio)
 	{
-		frame_w = frame_w / ((float)DISPLAY_WIDTH / DISPLAY_HEIGHT) * 4.0f / 3.0f;
+		frame_w *= ASPECT_CORRECT_SCALE_X;
 	}
 
 	SDL_Point frame = {.x = (int)SDL_roundf(frame_w), .y = (int)SDL_roundf(frame_h)};
@@ -186,7 +188,7 @@ void update(uint16_t* display_output, int visible_scanlines, uint16_t background
 	scale_x = scale_y = scale;
 	if (screen.correct_aspect_ratio)
 	{
-		scale_x = scale_x / ((float)DISPLAY_WIDTH / DISPLAY_HEIGHT) * 4.0f / 3.0f;
+		scale_x *= ASPECT_CORRECT_SCALE_X;
 	}
 	float w = scale_x * src.w;
 	float h = scale_y * src.h;
