@@ -224,26 +224,46 @@ void write8(uint32_t addr, uint8_t value)
 		check_tx_dreqs();
 		break;
 	case 0x03:
-		assert(port->status.tx_empty && port->ctrl.tx_enable);
+		Log::debug("[Serial] write port%d data: %02X", port->id, value);
+		port->tx_buffer = value;
 
-		if (!port->tx_bits_left)
+		if (!(port->status.tx_empty && port->ctrl.tx_enable))
 		{
-			//Space is available, move the data to the buffer register and start the timed transfer
-			port->tx_start(value);
+			break;
 		}
-		else
+
+		// Data written from DMA automatically sets the tx_empty bit
+		if (DMAC::is_dma_access())
 		{
-			//Byte transfer is in progress, clear DREQ and store data in the buffer
-			port->tx_buffer = value;
 			port->status.tx_empty = false;
-			DMAC::clear_dreq(port->tx_dreq_id);
+			if (!port->tx_bits_left)
+			{
+				//Space is available, start the timed transfer
+				port->tx_start(port->tx_buffer);
+			}
+			else
+			{
+				//Byte transfer is in progress, clear DREQ
+				DMAC::clear_dreq(port->tx_dreq_id);
+			}
 		}
 		break;
 	case 0x04:
+	{
 		//TODO implement other status bits
 		Log::debug("[Serial] write port%d status: %02X", port->id, value);
-		port->status.tx_empty &= (value >> 7) & 0x1;
+		bool new_empty = (value >> 7) & 0x1;
+		if(port->status.tx_empty && !new_empty)
+		{
+			port->status.tx_empty &= new_empty;
+			if (!port->tx_bits_left)
+			{
+				//Space is available, start the timed transfer
+				port->tx_start(port->tx_buffer);
+			}
+		}
 		break;
+	}
 	default:
 		assert(0);
 	}
