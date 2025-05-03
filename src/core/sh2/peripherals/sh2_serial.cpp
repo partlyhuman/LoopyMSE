@@ -167,8 +167,18 @@ uint8_t read8(uint32_t addr)
 	Port* port = &state.ports[addr >> 3];
 	int reg = addr & 0x7;
 
-	Log::debug("[Serial] read port%d reg%d", port->id, reg);
-	return 0;
+	uint8_t value = 0;
+	switch (reg)
+	{
+	case 0x04:
+		//TODO implement other status bits
+		value = port->status.tx_empty << 7;
+		break;
+	default:
+		Log::debug("[Serial] read port%d reg%d: %02X", port->id, reg, value);
+		break;
+	}
+	return value;
 }
 
 void write8(uint32_t addr, uint8_t value)
@@ -230,8 +240,9 @@ void write8(uint32_t addr, uint8_t value)
 		}
 		break;
 	case 0x04:
-		//TODO
-		Log::debug("[Serial write port%d status: %02X", port->id, value);
+		//TODO implement other status bits
+		Log::debug("[Serial] write port%d status: %02X", port->id, value);
+		port->status.tx_empty &= (value >> 7) & 0x1;
 		break;
 	default:
 		assert(0);
