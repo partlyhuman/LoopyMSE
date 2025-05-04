@@ -223,16 +223,28 @@ static void draw_bitmap(int index, int y)
 
 	VDP::BitmapRegs* regs = &vdp.bitmap_regs[index];
 
-	if (y < regs->screeny || y > regs->screeny + regs->h)
+	//Skip drawing if the bitmap is off-screen verticaly
+	if (((y - regs->screeny) & 0x1FF) > regs->h)
 	{
 		return;
 	}
 
-	int start_x = regs->screenx;
-	int end_x = (regs->screenx + regs->w + 1) & 0x1FF;
+	int screenx = regs->screenx;
+	if (screenx & 0x100)
+	{
+		screenx -= 0x200;
+	}
+	int visible_left = std::max(0, screenx + regs->clipx);
+	int visible_right = std::min(255, screenx + regs->w);
+
+	//Skip drawing if the bitmap is off-screen horizontally
+	if (visible_left > 255 || visible_right < 0)
+	{
+		return;
+	}
 
 	bool is_8bit = false;
-	bool split_y = false;
+	bool split_x = false, split_y = false;
 	int vram_width = 0, vram_height = 0;
 	switch (vdp.bitmap_ctrl)
 	{
@@ -247,40 +259,58 @@ static void draw_bitmap(int index, int y)
 		vram_width = 256;
 		vram_height = 512;
 		break;
+	case 0x02:
+		split_y = true;
+		vram_width = 512;
+		vram_height = 256;
+		break;
+	case 0x03:
+		split_x = true;
+		vram_width = 256;
+		vram_height = 512;
+		break;
 	case 0x04:
-		is_8bit = false;
 		vram_width = 512;
 		vram_height = 512;
 		break;
 	default:
 		assert(0);
 	}
+	uint8_t subpalette_bits = ((vdp.bitmap_palsel >> ((3 - index) * 4)) & 0xF) << 4;
+	bool use_color_buffer = (regs->buffer_ctrl & 0x100) != 0;
 
 	int width_mask = vram_width - 1;
 	int height_mask = vram_height - 1;
 
-	//The entire row needs to be looped rather than just the bitmap range because the buffer color is updated even outside the bitmap
-	//TODO: this could likely be optimized in the case where the buffer color is disabled (which is most of the time)
-	for (int x = 0; x < vram_width; x++)
+	int data_y = (y + regs->scrolly - regs->screeny) & height_mask;
+	//If split_y is true, there are two separate maps at y=0 and y=256 that get scrolled independently
+	if (split_y)
 	{
-		int data_x = (regs->scrollx + x - regs->screenx) & width_mask;
-		int data_y = (regs->scrolly + y - regs->screeny) & height_mask;
+		data_y |= regs->scrolly & 0x100;
+	}
 
-		//If split_y is true, there are two separate maps at y=0 and y=256 that get scrolled independently
-		if (split_y)
+	//Fetch the appropriate line independent of screenx and process color buffering
+	//TODO: this fetching should take place on the previous scanline (should subpalette mapping happen earlier too?)
+	uint8_t bm_cache_line[256];
+	int bm_cache_end = std::min(255, regs->w + 1); //HW bug: one extra pixel is processed unless full line
+	for (int x = 0; x <= bm_cache_end; x++)
+	{
+		int data_x = (x + regs->scrollx) & width_mask;
+		if (split_x)
 		{
-			data_y |= regs->scrolly & 0x100;
+			data_x |= regs->scrollx & 0x100;
 		}
 
-		uint32_t addr = data_x + (data_y * vram_width);
+		uint32_t addr;
 		uint8_t data;
 		if (is_8bit)
 		{
+			addr = data_x + (data_y * 256);
 			data = vdp.bitmap[addr & 0x1FFFF];
 		}
 		else
 		{
-			addr >>= 1;
+			addr = (data_x >> 1) + (data_y * 256);
 			data = vdp.bitmap[addr & 0x1FFFF];
 			if (data_x & 0x1)
 			{
@@ -290,10 +320,23 @@ static void draw_bitmap(int index, int y)
 			{
 				data >>= 4;
 			}
+
+			if (data > 0)
+			{
+				if (data == 0xF && use_color_buffer)
+				{
+					data = 0xFF;
+				}
+				else
+				{
+					data |= subpalette_bits;
+				}
+			}
 		}
 
-		if (regs->buffer_ctrl & 0x100)
+		if (use_color_buffer)
 		{
+			uint8_t threshold_mask = is_8bit ? 0xFF : 0x0F;
 			if (data == 0xFF)
 			{
 				//HW bug: 0xFF fails to get replaced if x=0xFF
@@ -302,45 +345,27 @@ static void draw_bitmap(int index, int y)
 					data = regs->buffered_color;
 				}
 			}
-			else if (data < (regs->buffer_ctrl & 0xFF))
+			else if ((data & threshold_mask) < (regs->buffer_ctrl & threshold_mask))
 			{
 				regs->buffered_color = data;
 			}
 		}
 
-		//Now that the buffer control logic has been processed, the pixel can actually be drawn appropriately
-		if (!data)
-		{
-			write_color_raw(vdp.bitmap_output[index], x, y, 0);
-			continue;
-		}
+		//Now that the buffer control logic has been processed, store the pixel to the cache line
+		bm_cache_line[x] = data;
+	}
 
-		if (x < regs->clipx)
+	//Now draw the appropriate part of the cache line to the screen according to screenx
+	//For 4bit, subpalette lookups happen in this phase
+	for(int x = visible_left; x <= visible_right; x++)
+	{
+		uint8_t data = bm_cache_line[(x - screenx) & 0xFF];
+		if (data == 0)
 		{
 			continue;
-		}
-
-		if (end_x > start_x)
-		{
-			if (x < start_x || x >= end_x)
-			{
-				continue;
-			}
-		}
-		else
-		{
-			if (x < start_x && x >= end_x)
-			{
-				continue;
-			}
 		}
 
 		uint8_t output = data;
-		if (!is_8bit)
-		{
-			int pal = (vdp.bitmap_palsel >> ((3 - index) * 4)) & 0xF;
-			output |= pal << 4;
-		}
 
 		int pair_index = index >> 1;
 		int output_mode = vdp.layer_ctrl.bitmap_screen_mode[pair_index];
