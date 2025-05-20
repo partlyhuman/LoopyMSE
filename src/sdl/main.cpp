@@ -537,7 +537,7 @@ int main(int argc, char** argv)
 					if (config.cart.is_loaded())
 					{
 						Log::info("Rebooting Loopy...");
-						System::shutdown();
+						System::shutdown(config);
 						System::initialize(config);
 						last_frame_ticks = INT_MAX;
 					}
@@ -627,7 +627,7 @@ int main(int argc, char** argv)
 				}
 				break;
 			case SDL_DROPFILE:
-				System::shutdown();
+				System::shutdown(config);
 
 				std::string path = e.drop.file;
 				if (load_cart(config, path))
@@ -650,7 +650,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-	System::shutdown();
+	System::shutdown(config);
 	SDL::shutdown();
 
 	return 0;

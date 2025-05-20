@@ -5,7 +5,7 @@ namespace System
 {
 
 void initialize(Config::SystemInfo& config);
-void shutdown();
+void shutdown(Config::SystemInfo& config);
 
 void run();
 

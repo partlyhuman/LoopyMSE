@@ -42,7 +42,7 @@ void initialize(Config::SystemInfo& config)
 	SH2::OCPM::Serial::set_tx_callback(1, &Sound::midi_byte_in);
 }
 
-void shutdown()
+void shutdown(Config::SystemInfo& config)
 {
 	//Shutdown all components in the reverse order they were initialized
 	Printer::shutdown();
@@ -52,7 +52,7 @@ void shutdown()
 	Input::shutdown();
 
 	LoopyIO::shutdown();
-	Cart::shutdown();
+	Cart::shutdown(config.cart);
 
 	SH2::shutdown();
 
