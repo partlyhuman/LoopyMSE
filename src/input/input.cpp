@@ -45,6 +45,24 @@ void set_key_state(int key, bool pressed)
 	LoopyIO::update_pad(pad_button, pressed);
 }
 
+void set_mouse_button_state(int button, bool pressed)
+{
+	// TODO: replace the hardcoded 1 and 3 with SDL constants or bindings?
+	if (button == 1)
+	{
+		LoopyIO::update_mouse_buttons(MOUSE_L, pressed);
+	}
+	if (button == 3)
+	{
+		LoopyIO::update_mouse_buttons(MOUSE_R, pressed);
+	}
+}
+
+void move_mouse(int delta_x, int delta_y)
+{
+	LoopyIO::update_mouse_position(delta_x, delta_y);
+}
+
 void add_key_binding(int code, PadButton pad_button)
 {
 	key_bindings.emplace(code, pad_button);

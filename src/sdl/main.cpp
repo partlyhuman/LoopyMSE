@@ -55,9 +55,22 @@ struct Screen
 
 static Screen screen;
 static SDL_GameController* controller;
+static bool mouse_captured;
+
+void capture_mouse(bool cap)
+{
+	SDL_SetRelativeMouseMode(cap ? SDL_TRUE : SDL_FALSE);
+	mouse_captured = cap;
+}
+
+bool is_mouse_captured()
+{
+	return mouse_captured;
+}
 
 void shutdown()
 {
+	capture_mouse(false);
 	SDL_ShowCursor(SDL_ENABLE);
 
 	//Destroy window, then kill SDL2
@@ -555,6 +568,13 @@ int main(int argc, char** argv)
 					}
 					break;
 				case SDLK_ESCAPE:
+					if (SDL::is_mouse_captured())
+					{
+						SDL::capture_mouse(false);
+						Input::set_mouse_button_state(SDL_BUTTON_LEFT, false);
+						Input::set_mouse_button_state(SDL_BUTTON_RIGHT, false);
+						break;
+					}
 					if (SDL::screen.is_fullscreen())
 					{
 						SDL::toggle_fullscreen();
@@ -599,14 +619,35 @@ int main(int argc, char** argv)
 						Sound::set_mute(true);
 						is_paused = true;
 					}
+					if (SDL::is_mouse_captured())
+					{
+						SDL::capture_mouse(false);
+						Input::set_mouse_button_state(SDL_BUTTON_LEFT, false);
+						Input::set_mouse_button_state(SDL_BUTTON_RIGHT, false);
+					}
 					break;
 				}
 				break;
-			case SDL_MOUSEBUTTONUP:
-				// Double-click to toggle fullscreen
-				if (e.button.clicks >= 2)
+			case SDL_MOUSEBUTTONDOWN:
+				if (SDL::is_mouse_captured())
 				{
-					SDL::toggle_fullscreen();
+					Input::set_mouse_button_state(e.button.button, true);
+				}
+				else
+				{
+					SDL::capture_mouse(true);
+				}
+				break;
+			case SDL_MOUSEBUTTONUP:
+				if (SDL::is_mouse_captured())
+				{
+					Input::set_mouse_button_state(e.button.button, false);
+				}
+				break;
+			case SDL_MOUSEMOTION:
+				if (SDL::is_mouse_captured())
+				{
+					Input::move_mouse(e.motion.xrel, -e.motion.yrel);
 				}
 				break;
 			case SDL_CONTROLLERDEVICEADDED:
