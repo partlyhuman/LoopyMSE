@@ -12,8 +12,8 @@ static std::unordered_map<int, PadButton> controller_bindings;
 
 void initialize()
 {
-	//Indicate the controller is connected
-	LoopyIO::update_pad(PAD_PRESENCE, true);
+	//Indicate the gamepad is connected
+	LoopyIO::set_controller_plugged(true, false);
 }
 
 void shutdown()

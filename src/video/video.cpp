@@ -569,6 +569,7 @@ void ctrl_write16(uint32_t addr, uint16_t value)
 		assert(!vdp.mode.use_pal);
 
 		vdp.visible_scanlines = (vdp.mode.extra_scanlines) ? 0xF0 : 0xE0;
+		LoopyIO::set_controller_scan_mode(vdp.mode.pad_scan, vdp.mode.mouse_scan);
 		break;
 	case 0x006:
 		if (value & 0x01)
