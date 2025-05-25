@@ -147,7 +147,6 @@ bool parse_config(fs::path config_path, Args& args)
 		("emulator.sound_bios", po::value<std::string>()->default_value("soundbios.bin"), "Sound BIOS file")
 		("emulator.run_in_background", po::value<bool>()->default_value(false), "Continue emulation while window not focused")
 		("emulator.start_in_fullscreen", po::value<bool>()->default_value(false), "Default to fullscreen mode")
-		("emulator.start_with_mouse", po::value<bool>()->default_value(true), "Start in mouse mode for games known to use mouse")
 		("emulator.int_scale", po::value<int>()->default_value(3), "Integer scale")
 		("emulator.correct_aspect_ratio", po::value<bool>()->default_value(true), "Stretch display pixels to 4:3")
 		("emulator.crop_overscan", po::value<bool>()->default_value(true), "Crop border and overscan areas")
@@ -177,7 +176,6 @@ bool parse_config(fs::path config_path, Args& args)
 		args.sound_bios = vm["emulator.sound_bios"].as<std::string>();
 		args.run_in_background = vm["emulator.run_in_background"].as<bool>();
 		args.start_in_fullscreen = vm["emulator.start_in_fullscreen"].as<bool>();
-		args.start_with_mouse = vm["emulator.start_with_mouse"].as<bool>();
 		args.correct_aspect_ratio = vm["emulator.correct_aspect_ratio"].as<bool>();
 		args.antialias = vm["emulator.antialias"].as<bool>();
 		args.crop_overscan = vm["emulator.crop_overscan"].as<bool>();

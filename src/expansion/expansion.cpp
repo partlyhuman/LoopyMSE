@@ -11,7 +11,7 @@ namespace Expansion
 
 std::unordered_set<uint32_t> MOUSE_CARTS = {
 	0xA5341F72,	 // Chakrakun no Omajinai Paradise
-	0xF294F931,	 // Pasocom Collection
+	0xF294F931,	 // Pasokon Collection
 	0x6A410BB2,	 // Little Romance
 	0x8373E9DD,	 // Loopy Town no Oheya ga Hoshii!
 	0x6E00CE71,	 // Lupiton no Wonder Palette

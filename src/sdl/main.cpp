@@ -363,18 +363,8 @@ bool load_cart(SystemInfo& config, Options::Args& args, std::string path)
 	config.cart.sram.resize(sram_size, 0xFF);
 
 	const size_t CHECKSUM_OFFSET = 8;
-	if (args.start_with_mouse)
-	{
-		uint32_t checksum = Expansion::get_cart_header_checksum(config.cart);
-		if (Expansion::MOUSE_CARTS.count(checksum))
-		{
-			config.connected_controller = CONTROLLER_MOUSE;
-		}
-		else
-		{
-			config.connected_controller = CONTROLLER_PAD;
-		}
-	}
+	uint32_t checksum = Expansion::get_cart_header_checksum(config.cart);
+	config.connected_controller = Expansion::MOUSE_CARTS.count(checksum) ? CONTROLLER_MOUSE : CONTROLLER_PAD;
 	return true;
 }
 
@@ -566,25 +556,6 @@ int main(int argc, char** argv)
 				SDL_Keycode keycode = e.key.keysym.sym;
 				switch (keycode)
 				{
-				case SDLK_F9:
-				{
-					// Allow switching controller types before ROM is loaded
-					ControllerType new_controller =
-						LoopyIO::get_plugged_controller() == CONTROLLER_MOUSE ? CONTROLLER_PAD : CONTROLLER_MOUSE;
-					LoopyIO::set_plugged_controller(new_controller);
-					SDL::update_window_title();
-					SDL::capture_mouse(new_controller == CONTROLLER_MOUSE);
-
-					// Reboot for you if already loaded?
-					if (config.cart.is_loaded())
-					{
-						Log::info("Rebooting Loopy...");
-						System::shutdown(config);
-						System::initialize(config);
-						last_frame_ticks = INT_MAX;
-					}
-				}
-				break;
 				case SDLK_F10:
 					if (config.cart.is_loaded())
 					{
@@ -606,6 +577,15 @@ int main(int argc, char** argv)
 				case SDLK_F12:
 					if (config.cart.is_loaded())
 					{
+						if (e.key.keysym.mod & KMOD_SHIFT)
+						{
+							ControllerType new_controller = LoopyIO::get_plugged_controller() == CONTROLLER_MOUSE
+																? CONTROLLER_PAD
+																: CONTROLLER_MOUSE;
+							LoopyIO::set_plugged_controller(new_controller);
+							SDL::capture_mouse(new_controller == CONTROLLER_MOUSE);
+						}
+
 						Log::info("Rebooting Loopy...");
 						System::shutdown(config);
 						System::initialize(config);
@@ -735,12 +715,12 @@ int main(int argc, char** argv)
 					}
 
 					System::initialize(config);
+					SDL::update_window_title();
+					SDL::focus_window();
+
 					// So you can tell that MSE is running even before you click into it
 					is_paused = false;
 					last_frame_ticks = INT_MAX;
-
-					SDL::update_window_title();
-					SDL::focus_window();
 				}
 				break;
 			}

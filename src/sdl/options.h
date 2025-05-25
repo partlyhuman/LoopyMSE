@@ -14,7 +14,6 @@ struct Args
 	std::string sound_bios;
 	bool run_in_background;
 	bool start_in_fullscreen;
-	bool start_with_mouse;
 	bool correct_aspect_ratio;
 	bool crop_overscan;
 	bool antialias;
