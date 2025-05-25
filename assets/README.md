@@ -34,7 +34,9 @@ Launching via commandline:
 
 ## Playing Loopy My Seal Emulator
 
-You can use the keyboard or a gamepad / controller to emulate controller input. The Loopy Mouse is not yet emulated.
+You can use the keyboard or a gamepad / controller to emulate controller input.
+For games with mouse support, click anywhere in the window to capture your mouse movements.
+Pressing Escape will release your cursor.
 
 Default controls (remap in `loopymse.ini`):
 
@@ -49,13 +51,19 @@ Default controls (remap in `loopymse.ini`):
 | Start | Enter    |
 
 Additionally, these special functions are available.
+        
+| Function               | Key         |
+| ---------------------- | ----------- |
+| Screenshot             | F10         |
+| Fullscreen             | F11         |
+| Reboot                 | F12         |
+| Change controller type | Shift + F12 |
+| Exit                   | Esc         |
 
-| Function    | Key |
-| ----------- | --- |
-| Screenshot  | F10 |
-| Fullscreen  | F11 |
-| Reboot      | F12 |
-| Exit        | Esc |
+Commercial Loopy games generally don't support hot-swapping controllers, instead they detect gamepad or mouse at boot
+and act accordingly. For the five commercially released games with mouse support, LoopyMSE will simulate a mouse being
+connected. (These are Chakra-kun, PC Collection, Little Romance, Loopy Town, and Lupiton.)
+To toggle between gamepad and mouse mode, use Shift+F12.
 
 Screenshots are saved in the same directory as the loaded ROM, or in the same directory as `loopymse.ini` if the ROM directory is not available for some reason.
 Currently, screenshots are saved in .bmp format only, and with a unique file name that contains the date and time, prefixed with `loopymse_`.

@@ -9,16 +9,25 @@
 namespace Expansion
 {
 
+std::unordered_set<uint32_t> MOUSE_CARTS = {
+	0xA5341F72,	 // Chakrakun no Omajinai Paradise
+	0xF294F931,	 // Pasokon Collection
+	0x6A410BB2,	 // Little Romance
+	0x8373E9DD,	 // Loopy Town no Oheya ga Hoshii!
+	0x6E00CE71,	 // Lupiton no Wonder Palette
+};
+
+std::unordered_set<uint32_t> MSM665X_CARTS = {
+	0xD90FE762,	 // Wanwan Aijou Monogatari
+	0xB5BE48D7,	 // Wanwan-T-En (v1.0)
+};
+
 void initialize(Config::CartInfo& cart)
 {
 	if (!cart.is_loaded()) return;
 
 	// Use cart checksum from header as cart ID
-	const size_t CHECKSUM_OFFSET = 8;
-	if (CHECKSUM_OFFSET + sizeof(uint32_t) > cart.rom.size()) return;
-	uint32_t checksum = cart.rom[CHECKSUM_OFFSET] << 24 | cart.rom[CHECKSUM_OFFSET + 1] << 16 |
-						cart.rom[CHECKSUM_OFFSET + 2] << 8 | cart.rom[CHECKSUM_OFFSET + 3];
-
+	uint32_t checksum = get_cart_header_checksum(cart);
 	// Conditionally turn on cart expansions depending on the inserted cart
 	if (MSM665X::enable(checksum)) MSM665X::initialize(cart.rom_path);
 }
@@ -26,6 +35,18 @@ void initialize(Config::CartInfo& cart)
 void shutdown()
 {
 	if (MSM665X::is_enabled()) MSM665X::shutdown();
+}
+
+uint32_t get_cart_header_checksum(Config::CartInfo& cart)
+{
+	const size_t CHECKSUM_OFFSET = 8;
+	if (CHECKSUM_OFFSET + sizeof(uint32_t) > cart.rom.size())
+	{
+		Log::warn("[Expansion] ROM is too small to contain a valid header");
+		return -1;
+	}
+	return cart.rom[CHECKSUM_OFFSET] << 24 | cart.rom[CHECKSUM_OFFSET + 1] << 16 | cart.rom[CHECKSUM_OFFSET + 2] << 8 |
+		   cart.rom[CHECKSUM_OFFSET + 3];
 }
 
 void unmapped_write8(uint32_t addr, uint8_t value)

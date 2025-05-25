@@ -2,7 +2,9 @@
 #include <common/bswp.h>
 #include <common/imgwriter.h>
 #include <core/config.h>
+#include <core/loopy_io.h>
 #include <core/system.h>
+#include <expansion/expansion.h>
 #include <input/input.h>
 #include <log/log.h>
 #include <sound/sound.h>
@@ -21,6 +23,7 @@
 #define MAX_WINDOW_INT_SCALE 10
 
 namespace imagew = Common::ImageWriter;
+using namespace Config;
 
 namespace SDL
 {
@@ -55,22 +58,10 @@ struct Screen
 
 static Screen screen;
 static SDL_GameController* controller;
-static bool mouse_captured;
-
-void capture_mouse(bool cap)
-{
-	SDL_SetRelativeMouseMode(cap ? SDL_TRUE : SDL_FALSE);
-	mouse_captured = cap;
-}
-
-bool is_mouse_captured()
-{
-	return mouse_captured;
-}
 
 void shutdown()
 {
-	capture_mouse(false);
+	SDL_SetRelativeMouseMode(SDL_FALSE);
 	SDL_ShowCursor(SDL_ENABLE);
 
 	//Destroy window, then kill SDL2
@@ -80,6 +71,20 @@ void shutdown()
 	SDL_DestroyWindow(screen.window);
 
 	SDL_Quit();
+}
+
+void capture_mouse(bool cap)
+{
+	if (SDL_SetRelativeMouseMode(cap ? SDL_TRUE : SDL_FALSE) != 0)
+	{
+		Log::warn("Relative mouse mode unsupported by system: %s", SDL_GetError());
+		return;
+	}
+}
+
+bool is_mouse_captured()
+{
+	return SDL_GetRelativeMouseMode();
 }
 
 void open_first_controller()
@@ -119,6 +124,26 @@ SDL_Point resize_window(bool apply = true, int scale = 0)
 	}
 	Log::info("[SCREEN] size width=%d height=%d", frame.x, frame.y);
 	return frame;
+}
+
+const char* get_window_title()
+{
+	static char title[64];
+	snprintf(
+		title, sizeof(title), "%s %s | %s connected", PROJECT_DESCRIPTION, PROJECT_VERSION,
+		controller_type_str(LoopyIO::get_plugged_controller())
+	);
+	return title;
+}
+
+void update_window_title()
+{
+	SDL_SetWindowTitle(screen.window, get_window_title());
+}
+
+void focus_window()
+{
+	SDL_RaiseWindow(screen.window);
 }
 
 void change_window_scale(int delta)
@@ -246,14 +271,12 @@ void initialize(Options::Args& args)
 	screen.window_int_scale = std::clamp(args.int_scale, 1, MAX_WINDOW_INT_SCALE);
 	screen.prescale = args.antialias ? PRESCALE_FACTOR : 1;
 
-	char title[64];
-	snprintf(title, sizeof(title), "%s %s", PROJECT_DESCRIPTION, PROJECT_VERSION);
 	SDL_Point window_size = resize_window(false);
 	Uint32 window_opts = 0;
 	window_opts |= args.crop_overscan ? 0 : SDL_WINDOW_RESIZABLE;
 	window_opts |= args.start_in_fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
 	screen.window = SDL_CreateWindow(
-		title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_size.x, window_size.y, window_opts
+		get_window_title(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_size.x, window_size.y, window_opts
 	);
 	window_size = resize_window(false, 1);
 	SDL_SetWindowMinimumSize(screen.window, window_size.x, window_size.y);
@@ -300,7 +323,7 @@ std::string remove_extension(std::string file_path)
 	return file_path.substr(0, pos);
 }
 
-bool load_cart(Config::SystemInfo& config, std::string path)
+bool load_cart(SystemInfo& config, std::string path)
 {
 	config.cart = {};
 
@@ -338,10 +361,14 @@ bool load_cart(Config::SystemInfo& config, std::string path)
 	//If a file was loaded but was smaller than the SRAM size, the uninitialized bytes will be 0xFF.
 	//If the file was larger, then the vector size is clamped
 	config.cart.sram.resize(sram_size, 0xFF);
+
+	const size_t CHECKSUM_OFFSET = 8;
+	uint32_t checksum = Expansion::get_cart_header_checksum(config.cart);
+	config.connected_controller = Expansion::MOUSE_CARTS.count(checksum) ? CONTROLLER_MOUSE : CONTROLLER_PAD;
 	return true;
 }
 
-bool load_bios(Config::SystemInfo& config, fs::path path)
+bool load_bios(SystemInfo& config, fs::path path)
 {
 	std::ifstream bios_file(path, std::ios::binary);
 	if (!bios_file.is_open())
@@ -356,7 +383,7 @@ bool load_bios(Config::SystemInfo& config, fs::path path)
 	return true;
 }
 
-bool load_sound_bios(Config::SystemInfo& config, fs::path path)
+bool load_sound_bios(SystemInfo& config, fs::path path)
 {
 	std::ifstream sound_rom_file(path, std::ios::binary);
 	if (!sound_rom_file.is_open())
@@ -397,7 +424,7 @@ int main(int argc, char** argv)
 	bool has_quit = false;
 	bool is_paused = false;
 
-	Config::SystemInfo config;
+	SystemInfo config;
 	Options::Args args;
 
 	if (!fs::exists(PREFS_PATH / INI_PATH))
@@ -468,6 +495,7 @@ int main(int argc, char** argv)
 		{
 			config.emulator.image_save_directory = rom_path.parent_path();
 		}
+
 		System::initialize(config);
 	}
 	else
@@ -549,9 +577,19 @@ int main(int argc, char** argv)
 				case SDLK_F12:
 					if (config.cart.is_loaded())
 					{
+						if (e.key.keysym.mod & KMOD_SHIFT)
+						{
+							ControllerType new_controller = LoopyIO::get_plugged_controller() == CONTROLLER_MOUSE
+																? CONTROLLER_PAD
+																: CONTROLLER_MOUSE;
+							LoopyIO::set_plugged_controller(new_controller);
+							SDL::capture_mouse(new_controller == CONTROLLER_MOUSE);
+						}
+
 						Log::info("Rebooting Loopy...");
 						System::shutdown(config);
 						System::initialize(config);
+						SDL::update_window_title();
 						last_frame_ticks = INT_MAX;
 					}
 					break;
@@ -578,11 +616,9 @@ int main(int argc, char** argv)
 					if (SDL::screen.is_fullscreen())
 					{
 						SDL::toggle_fullscreen();
+						break;
 					}
-					else
-					{
-						has_quit = true;
-					}
+					has_quit = true;
 					break;
 				default:
 					Input::set_key_state(keycode, false);
@@ -629,22 +665,19 @@ int main(int argc, char** argv)
 				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
-				if (SDL::is_mouse_captured())
-				{
-					Input::set_mouse_button_state(e.button.button, true);
-				}
-				else
+				// Only allow taking control of pointer when the controller is mouse
+				if (!SDL::is_mouse_captured() && LoopyIO::get_plugged_controller() == CONTROLLER_MOUSE)
 				{
 					SDL::capture_mouse(true);
+					break;
 				}
+				Input::set_mouse_button_state(e.button.button, true);
 				break;
 			case SDL_MOUSEBUTTONUP:
-				if (SDL::is_mouse_captured())
-				{
-					Input::set_mouse_button_state(e.button.button, false);
-				}
+				Input::set_mouse_button_state(e.button.button, false);
 				break;
 			case SDL_MOUSEMOTION:
+				// Better UX if the mouse doesn't move without being captured
 				if (SDL::is_mouse_captured())
 				{
 					Input::move_mouse(e.motion.xrel, -e.motion.yrel);
@@ -682,6 +715,9 @@ int main(int argc, char** argv)
 					}
 
 					System::initialize(config);
+					SDL::update_window_title();
+					SDL::focus_window();
+
 					// So you can tell that MSE is running even before you click into it
 					is_paused = false;
 					last_frame_ticks = INT_MAX;

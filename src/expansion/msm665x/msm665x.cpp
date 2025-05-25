@@ -16,11 +16,6 @@
 // in this stage of development, no harm turning it on always
 #undef LIMIT_TO_KNOWN_CARTS
 
-std::unordered_set<uint32_t> EXPANSION_CARTS = {
-	0xD90FE762,	 // Wanwan Aijou Monogatari
-	0xB5BE48D7,	 // Wanwan-T-En (v1.0)
-};
-
 namespace fs = std::filesystem;
 namespace Expansion::MSM665X
 {
@@ -44,7 +39,7 @@ uint8_t vc_sm = 0;
 bool enable(uint32_t cart_checksum)
 {
 #ifdef LIMIT_TO_KNOWN_CARTS
-	enabled = EXPANSION_CARTS.count(cart_checksum) > 0;
+	enabled = MSM665X_CARTS.count(cart_checksum) > 0;
 	Log::info("[MSM665] enabled for cart %X? %d\n", cart_checksum, enabled);
 #else
 	enabled = true;
