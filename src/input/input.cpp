@@ -13,8 +13,7 @@ static std::unordered_map<int, PadButton> controller_bindings;
 
 void initialize()
 {
-	// Start with gamepad connected, maybe this shouldn't reset?
-	// set_input_device(0, DEVICE_MOUSE);
+	//nop
 }
 
 void shutdown()

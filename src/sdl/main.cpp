@@ -323,7 +323,7 @@ std::string remove_extension(std::string file_path)
 	return file_path.substr(0, pos);
 }
 
-bool load_cart(SystemInfo& config, Options::Args& args, std::string path)
+bool load_cart(SystemInfo& config, std::string path)
 {
 	config.cart = {};
 
@@ -488,7 +488,7 @@ int main(int argc, char** argv)
 		// So don't prohibit starting into fullscreen without a ROM
 		// args.start_in_fullscreen = false;
 	}
-	else if (load_cart(config, args, args.cart))
+	else if (load_cart(config, args.cart))
 	{
 		fs::path rom_path = fs::absolute(config.cart.rom_path);
 		if (rom_path.has_parent_path())
@@ -704,7 +704,7 @@ int main(int argc, char** argv)
 				System::shutdown(config);
 
 				std::string path = e.drop.file;
-				if (load_cart(config, args, path))
+				if (load_cart(config, path))
 				{
 					Log::info("Loaded %s...", path.c_str());
 
