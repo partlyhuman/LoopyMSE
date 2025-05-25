@@ -37,6 +37,8 @@ enum ControllerType
 	CONTROLLER_MOUSE,
 };
 
+const char* controller_type_str(ControllerType type);
+
 struct SystemInfo
 {
 	CartInfo cart;

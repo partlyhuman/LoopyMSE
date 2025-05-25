@@ -1,14 +1,24 @@
 #pragma once
+#include <unordered_set>
+
 #include "core/config.h"
 
 namespace Expansion
 {
+
+// Cart databases by CRC32 field of header
+// Carts known to support mouse
+extern std::unordered_set<uint32_t> MOUSE_CARTS;
+// Carts known to contain an MSM665X expansion PCM audio chip
+extern std::unordered_set<uint32_t> MSM665X_CARTS;
 
 constexpr uint32_t MAPPED_START = 0x040A0000;
 constexpr uint32_t MAPPED_END = 0x040B0000;
 
 void initialize(Config::CartInfo& cart);
 void shutdown();
+
+uint32_t get_cart_header_checksum(Config::CartInfo& cart);
 
 uint8_t exp_read8(uint32_t addr);
 uint16_t exp_read16(uint32_t addr);

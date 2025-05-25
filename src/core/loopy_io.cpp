@@ -152,6 +152,22 @@ void reg_write32(uint32_t addr, uint32_t value)
 	WRITE_DOUBLEWORD(reg, addr, value);
 }
 
+Config::ControllerType get_plugged_controller()
+{
+	if (state.mouse.plugged)
+	{
+		return Config::CONTROLLER_MOUSE;
+	}
+	else if (state.pad.plugged)
+	{
+		return Config::CONTROLLER_PAD;
+	}
+	else
+	{
+		return Config::CONTROLLER_NONE;
+	}
+}
+
 void set_plugged_controller(Config::ControllerType type)
 {
 	if (type == Config::CONTROLLER_NONE)

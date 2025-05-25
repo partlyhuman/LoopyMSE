@@ -4,6 +4,7 @@
 #include <core/config.h>
 #include <core/loopy_io.h>
 #include <core/system.h>
+#include <expansion/expansion.h>
 #include <input/input.h>
 #include <log/log.h>
 #include <sound/sound.h>
@@ -123,6 +124,26 @@ SDL_Point resize_window(bool apply = true, int scale = 0)
 	}
 	Log::info("[SCREEN] size width=%d height=%d", frame.x, frame.y);
 	return frame;
+}
+
+const char* get_window_title()
+{
+	static char title[64];
+	snprintf(
+		title, sizeof(title), "%s %s | %s mode", PROJECT_DESCRIPTION, PROJECT_VERSION,
+		controller_type_str(LoopyIO::get_plugged_controller())
+	);
+	return title;
+}
+
+void update_window_title()
+{
+	SDL_SetWindowTitle(screen.window, get_window_title());
+}
+
+void focus_window()
+{
+	SDL_RaiseWindow(screen.window);
 }
 
 void change_window_scale(int delta)
@@ -250,14 +271,12 @@ void initialize(Options::Args& args)
 	screen.window_int_scale = std::clamp(args.int_scale, 1, MAX_WINDOW_INT_SCALE);
 	screen.prescale = args.antialias ? PRESCALE_FACTOR : 1;
 
-	char title[64];
-	snprintf(title, sizeof(title), "%s %s", PROJECT_DESCRIPTION, PROJECT_VERSION);
 	SDL_Point window_size = resize_window(false);
 	Uint32 window_opts = 0;
 	window_opts |= args.crop_overscan ? 0 : SDL_WINDOW_RESIZABLE;
 	window_opts |= args.start_in_fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
 	screen.window = SDL_CreateWindow(
-		title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_size.x, window_size.y, window_opts
+		get_window_title(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_size.x, window_size.y, window_opts
 	);
 	window_size = resize_window(false, 1);
 	SDL_SetWindowMinimumSize(screen.window, window_size.x, window_size.y);
@@ -304,7 +323,7 @@ std::string remove_extension(std::string file_path)
 	return file_path.substr(0, pos);
 }
 
-bool load_cart(SystemInfo& config, std::string path)
+bool load_cart(SystemInfo& config, Options::Args& args, std::string path)
 {
 	config.cart = {};
 
@@ -342,6 +361,20 @@ bool load_cart(SystemInfo& config, std::string path)
 	//If a file was loaded but was smaller than the SRAM size, the uninitialized bytes will be 0xFF.
 	//If the file was larger, then the vector size is clamped
 	config.cart.sram.resize(sram_size, 0xFF);
+
+	const size_t CHECKSUM_OFFSET = 8;
+	if (args.start_with_mouse)
+	{
+		uint32_t checksum = Expansion::get_cart_header_checksum(config.cart);
+		if (Expansion::MOUSE_CARTS.count(checksum))
+		{
+			config.connected_controller = CONTROLLER_MOUSE;
+		}
+		else
+		{
+			config.connected_controller = CONTROLLER_PAD;
+		}
+	}
 	return true;
 }
 
@@ -465,13 +498,14 @@ int main(int argc, char** argv)
 		// So don't prohibit starting into fullscreen without a ROM
 		// args.start_in_fullscreen = false;
 	}
-	else if (load_cart(config, args.cart))
+	else if (load_cart(config, args, args.cart))
 	{
 		fs::path rom_path = fs::absolute(config.cart.rom_path);
 		if (rom_path.has_parent_path())
 		{
 			config.emulator.image_save_directory = rom_path.parent_path();
 		}
+
 		System::initialize(config);
 	}
 	else
@@ -532,6 +566,25 @@ int main(int argc, char** argv)
 				SDL_Keycode keycode = e.key.keysym.sym;
 				switch (keycode)
 				{
+				case SDLK_F9:
+				{
+					// Allow switching controller types before ROM is loaded
+					ControllerType new_controller =
+						LoopyIO::get_plugged_controller() == CONTROLLER_MOUSE ? CONTROLLER_PAD : CONTROLLER_MOUSE;
+					LoopyIO::set_plugged_controller(new_controller);
+					SDL::update_window_title();
+					SDL::capture_mouse(new_controller == CONTROLLER_MOUSE);
+
+					// Reboot for you if already loaded?
+					if (config.cart.is_loaded())
+					{
+						Log::info("Rebooting Loopy...");
+						System::shutdown(config);
+						System::initialize(config);
+						last_frame_ticks = INT_MAX;
+					}
+				}
+				break;
 				case SDLK_F10:
 					if (config.cart.is_loaded())
 					{
@@ -556,6 +609,7 @@ int main(int argc, char** argv)
 						Log::info("Rebooting Loopy...");
 						System::shutdown(config);
 						System::initialize(config);
+						SDL::update_window_title();
 						last_frame_ticks = INT_MAX;
 					}
 					break;
@@ -575,7 +629,6 @@ int main(int argc, char** argv)
 					if (SDL::is_mouse_captured())
 					{
 						SDL::capture_mouse(false);
-						LoopyIO::set_plugged_controller(CONTROLLER_PAD);
 						Input::set_mouse_button_state(SDL_BUTTON_LEFT, false);
 						Input::set_mouse_button_state(SDL_BUTTON_RIGHT, false);
 						break;
@@ -625,7 +678,6 @@ int main(int argc, char** argv)
 					if (SDL::is_mouse_captured())
 					{
 						SDL::capture_mouse(false);
-						LoopyIO::set_plugged_controller(CONTROLLER_PAD);
 						Input::set_mouse_button_state(SDL_BUTTON_LEFT, false);
 						Input::set_mouse_button_state(SDL_BUTTON_RIGHT, false);
 					}
@@ -633,10 +685,10 @@ int main(int argc, char** argv)
 				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
-				if (!SDL::is_mouse_captured())
+				// Only allow taking control of pointer when the controller is mouse
+				if (!SDL::is_mouse_captured() && LoopyIO::get_plugged_controller() == CONTROLLER_MOUSE)
 				{
 					SDL::capture_mouse(true);
-					LoopyIO::set_plugged_controller(CONTROLLER_MOUSE);
 					break;
 				}
 				Input::set_mouse_button_state(e.button.button, true);
@@ -645,7 +697,11 @@ int main(int argc, char** argv)
 				Input::set_mouse_button_state(e.button.button, false);
 				break;
 			case SDL_MOUSEMOTION:
-				Input::move_mouse(e.motion.xrel, -e.motion.yrel);
+				// Better UX if the mouse doesn't move without being captured
+				if (SDL::is_mouse_captured())
+				{
+					Input::move_mouse(e.motion.xrel, -e.motion.yrel);
+				}
 				break;
 			case SDL_CONTROLLERDEVICEADDED:
 				if (!SDL::controller)
@@ -668,7 +724,7 @@ int main(int argc, char** argv)
 				System::shutdown(config);
 
 				std::string path = e.drop.file;
-				if (load_cart(config, path))
+				if (load_cart(config, args, path))
 				{
 					Log::info("Loaded %s...", path.c_str());
 
@@ -682,6 +738,9 @@ int main(int argc, char** argv)
 					// So you can tell that MSE is running even before you click into it
 					is_paused = false;
 					last_frame_ticks = INT_MAX;
+
+					SDL::update_window_title();
+					SDL::focus_window();
 				}
 				break;
 			}
