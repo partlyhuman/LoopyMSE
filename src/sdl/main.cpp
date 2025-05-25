@@ -2,6 +2,7 @@
 #include <common/bswp.h>
 #include <common/imgwriter.h>
 #include <core/config.h>
+#include <core/loopy_io.h>
 #include <core/system.h>
 #include <input/input.h>
 #include <log/log.h>
@@ -21,6 +22,7 @@
 #define MAX_WINDOW_INT_SCALE 10
 
 namespace imagew = Common::ImageWriter;
+using namespace Config;
 
 namespace SDL
 {
@@ -55,22 +57,10 @@ struct Screen
 
 static Screen screen;
 static SDL_GameController* controller;
-static bool mouse_captured;
-
-void capture_mouse(bool cap)
-{
-	SDL_SetRelativeMouseMode(cap ? SDL_TRUE : SDL_FALSE);
-	mouse_captured = cap;
-}
-
-bool is_mouse_captured()
-{
-	return mouse_captured;
-}
 
 void shutdown()
 {
-	capture_mouse(false);
+	SDL_SetRelativeMouseMode(SDL_FALSE);
 	SDL_ShowCursor(SDL_ENABLE);
 
 	//Destroy window, then kill SDL2
@@ -80,6 +70,20 @@ void shutdown()
 	SDL_DestroyWindow(screen.window);
 
 	SDL_Quit();
+}
+
+void capture_mouse(bool cap)
+{
+	if (SDL_SetRelativeMouseMode(cap ? SDL_TRUE : SDL_FALSE) != 0)
+	{
+		Log::warn("Relative mouse mode unsupported by system: %s", SDL_GetError());
+		return;
+	}
+}
+
+bool is_mouse_captured()
+{
+	return SDL_GetRelativeMouseMode();
 }
 
 void open_first_controller()
@@ -300,7 +304,7 @@ std::string remove_extension(std::string file_path)
 	return file_path.substr(0, pos);
 }
 
-bool load_cart(Config::SystemInfo& config, std::string path)
+bool load_cart(SystemInfo& config, std::string path)
 {
 	config.cart = {};
 
@@ -341,7 +345,7 @@ bool load_cart(Config::SystemInfo& config, std::string path)
 	return true;
 }
 
-bool load_bios(Config::SystemInfo& config, fs::path path)
+bool load_bios(SystemInfo& config, fs::path path)
 {
 	std::ifstream bios_file(path, std::ios::binary);
 	if (!bios_file.is_open())
@@ -356,7 +360,7 @@ bool load_bios(Config::SystemInfo& config, fs::path path)
 	return true;
 }
 
-bool load_sound_bios(Config::SystemInfo& config, fs::path path)
+bool load_sound_bios(SystemInfo& config, fs::path path)
 {
 	std::ifstream sound_rom_file(path, std::ios::binary);
 	if (!sound_rom_file.is_open())
@@ -397,7 +401,7 @@ int main(int argc, char** argv)
 	bool has_quit = false;
 	bool is_paused = false;
 
-	Config::SystemInfo config;
+	SystemInfo config;
 	Options::Args args;
 
 	if (!fs::exists(PREFS_PATH / INI_PATH))
@@ -571,6 +575,7 @@ int main(int argc, char** argv)
 					if (SDL::is_mouse_captured())
 					{
 						SDL::capture_mouse(false);
+						LoopyIO::set_plugged_controller(CONTROLLER_PAD);
 						Input::set_mouse_button_state(SDL_BUTTON_LEFT, false);
 						Input::set_mouse_button_state(SDL_BUTTON_RIGHT, false);
 						break;
@@ -578,11 +583,9 @@ int main(int argc, char** argv)
 					if (SDL::screen.is_fullscreen())
 					{
 						SDL::toggle_fullscreen();
+						break;
 					}
-					else
-					{
-						has_quit = true;
-					}
+					has_quit = true;
 					break;
 				default:
 					Input::set_key_state(keycode, false);
@@ -622,6 +625,7 @@ int main(int argc, char** argv)
 					if (SDL::is_mouse_captured())
 					{
 						SDL::capture_mouse(false);
+						LoopyIO::set_plugged_controller(CONTROLLER_PAD);
 						Input::set_mouse_button_state(SDL_BUTTON_LEFT, false);
 						Input::set_mouse_button_state(SDL_BUTTON_RIGHT, false);
 					}
@@ -629,26 +633,19 @@ int main(int argc, char** argv)
 				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
-				if (SDL::is_mouse_captured())
-				{
-					Input::set_mouse_button_state(e.button.button, true);
-				}
-				else
+				if (!SDL::is_mouse_captured())
 				{
 					SDL::capture_mouse(true);
+					LoopyIO::set_plugged_controller(CONTROLLER_MOUSE);
+					break;
 				}
+				Input::set_mouse_button_state(e.button.button, true);
 				break;
 			case SDL_MOUSEBUTTONUP:
-				if (SDL::is_mouse_captured())
-				{
-					Input::set_mouse_button_state(e.button.button, false);
-				}
+				Input::set_mouse_button_state(e.button.button, false);
 				break;
 			case SDL_MOUSEMOTION:
-				if (SDL::is_mouse_captured())
-				{
-					Input::move_mouse(e.motion.xrel, -e.motion.yrel);
-				}
+				Input::move_mouse(e.motion.xrel, -e.motion.yrel);
 				break;
 			case SDL_CONTROLLERDEVICEADDED:
 				if (!SDL::controller)

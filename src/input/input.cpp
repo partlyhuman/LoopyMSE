@@ -1,8 +1,9 @@
 #include "input/input.h"
 
-#include <core/loopy_io.h>
-
 #include <unordered_map>
+
+#include "core/loopy_io.h"
+#include "log/log.h"
 
 namespace Input
 {
@@ -12,8 +13,8 @@ static std::unordered_map<int, PadButton> controller_bindings;
 
 void initialize()
 {
-	//Indicate the gamepad is connected
-	LoopyIO::set_controller_plugged(true, false);
+	// Start with gamepad connected, maybe this shouldn't reset?
+	// set_input_device(0, DEVICE_MOUSE);
 }
 
 void shutdown()

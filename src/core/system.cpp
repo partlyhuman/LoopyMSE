@@ -2,9 +2,9 @@
 
 #include <expansion/expansion.h>
 #include <input/input.h>
+#include <printer/printer.h>
 #include <sound/sound.h>
 #include <video/video.h>
-#include <printer/printer.h>
 
 #include "core/cart.h"
 #include "core/loopy_io.h"
@@ -29,7 +29,7 @@ void initialize(Config::SystemInfo& config)
 
 	//Initialize core hardware
 	Cart::initialize(config.cart);
-	LoopyIO::initialize();
+	LoopyIO::initialize(config);
 
 	//Initialize subprojects after everything else
 	Input::initialize();
@@ -51,7 +51,7 @@ void shutdown(Config::SystemInfo& config)
 	Video::shutdown();
 	Input::shutdown();
 
-	LoopyIO::shutdown();
+	LoopyIO::shutdown(config);
 	Cart::shutdown(config.cart);
 
 	SH2::shutdown();

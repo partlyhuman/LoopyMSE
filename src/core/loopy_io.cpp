@@ -35,14 +35,24 @@ struct State
 
 static State state;
 
-void initialize()
+void initialize(Config::SystemInfo &info)
 {
 	state = {};
+	set_plugged_controller(info.connected_controller);
 }
 
-void shutdown()
+void shutdown(Config::SystemInfo &info)
 {
-	//nop
+	// Persist controller connections between power cycles
+	if (state.mouse.plugged)
+	{
+		info.connected_controller = Config::CONTROLLER_MOUSE;
+	}
+	else
+	{
+		// Likely bad UX to set no controller, so reboot into pad even if nothing plugged
+		info.connected_controller = Config::CONTROLLER_PAD;
+	}
 }
 
 uint8_t reg_read8(uint32_t addr)
@@ -142,6 +152,32 @@ void reg_write32(uint32_t addr, uint32_t value)
 	WRITE_DOUBLEWORD(reg, addr, value);
 }
 
+void set_plugged_controller(Config::ControllerType type)
+{
+	if (type == Config::CONTROLLER_NONE)
+	{
+		Log::info("[LoopyIO] Controller unplugged from port 0");
+	}
+	else
+	{
+		Log::info("[LoopyIO] %s plugged into port 0", type == Config::CONTROLLER_MOUSE ? "Mouse" : "Pad");
+	}
+
+	state.pad.plugged = type == Config::CONTROLLER_PAD;
+	state.mouse.plugged = type == Config::CONTROLLER_MOUSE;
+	if (type != Config::CONTROLLER_MOUSE)
+	{
+		state.mouse.counter_x = 0;
+		state.mouse.counter_y = 0;
+	}
+}
+
+void set_controller_scan_mode(bool scan_pad, bool scan_mouse)
+{
+	state.scan_pad = scan_pad;
+	state.scan_mouse = scan_mouse;
+}
+
 void update_pad(int btn_info, bool pressed)
 {
 	if (state.pad.plugged)
@@ -181,24 +217,6 @@ void update_mouse_position(int delta_x, int delta_y)
 	}
 }
 
-void set_controller_scan_mode(bool scan_pad, bool scan_mouse)
-{
-	state.scan_pad = scan_pad;
-	state.scan_mouse = scan_mouse;
-}
-
-void set_controller_plugged(bool plugged_pad, bool plugged_mouse)
-{
-	state.pad.plugged = plugged_pad && !plugged_mouse;
-	state.mouse.plugged = plugged_mouse;
-
-	if (!plugged_mouse)
-	{
-		state.mouse.counter_x = 0;
-		state.mouse.counter_y = 0;
-	}
-}
-
 void update_print_temp()
 {
 	float temp = 22.f;
@@ -218,7 +236,8 @@ void update_sensors()
 	//Set sensors for appropriate idle state
 	int print_mech_sensors = seal_cartridge_present ? 0b100 : 0b011;
 
-	state.latched_sensors = (state.latched_sensors & 0x0100) | ((seal_cartridge_type & 7) << 4) | ((print_mech_sensors & 7) << 1) | (region_jumper & 1);
+	state.latched_sensors = (state.latched_sensors & 0x0100) | ((seal_cartridge_type & 7) << 4) |
+							((print_mech_sensors & 7) << 1) | (region_jumper & 1);
 }
 
 }  // namespace LoopyIO
