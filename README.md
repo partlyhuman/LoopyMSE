@@ -17,13 +17,16 @@ Features still TODO:
 - Improved / low-level printer emulation
 
 ## Builds
-[Github Actions](../../actions/) provides up-to-date builds for Linux, Windows, MacOS Intel, MacOS ARM64.
+
+Check the [Releases page](../../releases) to get LoopyMSE for Linux, Windows, MacOS Intel, MacOS ARM64.
+
+Rolling builds are available for every commit on [Github Actions](../../actions/).
 
 ## Usage
 See the [Readme](assets/README.md) (included in builds).
 
 ## Credits and Special Thanks
-PSI - original (upstream) [LoopyMSE](https://github.com/PSI-Rockin/LoopyMSE) project
-kasami - reverse engineering, accuracy improvements, bug fixes, sound & printer implementation, BIOS dumping
-partlyhuman - continued development, testing, automated builds, visual and quality-of-life improvements
-UBCH discord server - documentation and archival, translations, moral support
+* PSI - original (upstream) [LoopyMSE](https://github.com/PSI-Rockin/LoopyMSE) project
+* kasami - reverse engineering, accuracy improvements, bug fixes, sound & printer implementation, BIOS dumping
+* partlyhuman - continued development, testing, automated builds, visual and quality-of-life improvements
+* UBCH discord server - documentation and archival, translations, moral support
