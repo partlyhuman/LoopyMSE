@@ -130,7 +130,7 @@ const char* get_window_title()
 {
 	static char title[64];
 	snprintf(
-		title, sizeof(title), "%s %s | %s mode", PROJECT_DESCRIPTION, PROJECT_VERSION,
+		title, sizeof(title), "%s %s | %s connected", PROJECT_DESCRIPTION, PROJECT_VERSION,
 		controller_type_str(LoopyIO::get_plugged_controller())
 	);
 	return title;

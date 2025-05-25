@@ -170,14 +170,7 @@ Config::ControllerType get_plugged_controller()
 
 void set_plugged_controller(Config::ControllerType type)
 {
-	if (type == Config::CONTROLLER_NONE)
-	{
-		Log::info("[LoopyIO] Controller unplugged from port 0");
-	}
-	else
-	{
-		Log::info("[LoopyIO] %s plugged into port 0", type == Config::CONTROLLER_MOUSE ? "Mouse" : "Pad");
-	}
+	Log::info("[LoopyIO] %s plugged into port 0", controller_type_str(type));
 
 	state.pad.plugged = type == Config::CONTROLLER_PAD;
 	state.mouse.plugged = type == Config::CONTROLLER_MOUSE;
