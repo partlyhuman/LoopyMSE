@@ -19,7 +19,8 @@
 	"buildPresets": [
 		{
 			"name": "ninja-multi-vcpkg",
-			"configurePreset": "ninja-multi-vcpkg"
+			"configurePreset": "ninja-multi-vcpkg",
+			"configuration": "Release"
 		}
 	]
 }
