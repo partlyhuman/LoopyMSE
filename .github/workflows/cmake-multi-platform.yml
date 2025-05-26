@@ -19,101 +19,32 @@ jobs:
         build_type: [Release]
         include:
           - os: windows-latest
-            c_compiler: gcc
-            cpp_compiler: g++
-            msystem: MINGW64
+            triplet: x64-windows
           - os: ubuntu-latest
-            c_compiler: gcc
-            cpp_compiler: g++
+            triplet: x64-linux
           - os: macos-latest
-            c_compiler: clang
-            cpp_compiler: clang++
+            triplet: arm64-osx
           - os: macos-13
-            c_compiler: clang
-            cpp_compiler: clang++
+            triplet: x64-osx
 
     steps:
     - uses: actions/checkout@v4
-
-    - name: Dependencies (MacOS)
-      if: startsWith(matrix.os, 'macos-')
-      shell: bash
-      run: brew install sdl2 boost
-
-    - name: Dependencies (Ubuntu)
-      if: startsWith(matrix.os, 'ubuntu-')
-      shell: bash
-      run: sudo apt update && sudo apt install -y libsdl2-dev libboost-all-dev cmake
-
-    - name: Dependencies (Windows)
-      uses: msys2/setup-msys2@v2
-      if: startsWith(matrix.os, 'windows-')
       with:
-        # Variant of the environment to set by default: MSYS, MINGW32, MINGW64, UCRT64, CLANG64 or CLANGARM64
-        msystem: MINGW64
-        # Default value for MSYS2_PATH_TYPE environment variable: strict, inherit or minimal
-        #path-type: # optional, default is minimal
-        # Update MSYS2 installation through pacman
-        #update: # optional
-        # After installation and/or update, install additional packages through pacman
-        install: mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-SDL2 mingw-w64-x86_64-boost
-        # After installation and/or update, install additional packages through pacboy
-        #pacboy: # optional
-        # Retrieve and extract base installation from upstream GitHub Releases
-        #release: # optional, default is true
-        # Where to install MSYS2
-        #location: # optional, default is RUNNER_TEMP
-        # What to do when run on an incompatible runner: fatal, warn
-        #platform-check-severity: # optional, default is fatal
-        # If caching should be used
-        #cache: # optional, default is true
+        submodules: recursive
 
-    - name: Set reusable strings
-      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
-      id: strings
-      shell: bash
-      run: |
-        if [[ "$RUNNER_OS" == "Windows" ]]; then
-          github_workspace="${{ github.workspace }}"          
-          github_workspace=$(echo "$github_workspace" | sed 's/\\/\//g')
-          build_output_dir="$github_workspace/build"
-          echo "github_workspace=$github_workspace" >> "$GITHUB_OUTPUT"
-          echo "build-output-dir=$build_output_dir" >> "$GITHUB_OUTPUT"
-        else
-          build_output_dir="${{ github.workspace }}/build"
-          echo "build-output-dir=$build_output_dir" >> "$GITHUB_OUTPUT"
-        fi        
+    - uses: lukka/get-cmake@latest
 
-    - name: Configure CMake (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: msys2 {0}
-      run: >
-        cmake -B "${{ steps.strings.outputs.build-output-dir }}"
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -G "MinGW Makefiles"
-        -S "${{ steps.strings.outputs.github_workspace }}"
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgJsonGlob: '**/vcpkg.json'
+        vcpkgDirectory: '${{ github.workspace }}/vcpkg'
 
-    - name: Configure CMake
-      if: matrix.os != 'windows-latest'
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -S ${{ github.workspace }}
-
-    - name: Build
-      if: matrix.os != 'windows-latest'
-      run: cmake --build "${{ steps.strings.outputs.build-output-dir }}" --config ${{ matrix.build_type }} --target install
-
-    - name: Build (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: msys2 {0}
-      run: cmake --build "${{ steps.strings.outputs.build-output-dir }}" --config ${{ matrix.build_type }} --target install
+    - name: Run CMake consuming CMakePreset.json and run vcpkg to build packages
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'ninja-multi-vcpkg'
+        buildPreset: 'ninja-multi-vcpkg'
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
